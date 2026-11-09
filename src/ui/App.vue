@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
+import { art } from './art.ts';
 import AboutDialog from './components/AboutDialog.vue';
 import BattlefieldBoard from './components/BattlefieldBoard.vue';
+import DragGhost from './components/DragGhost.vue';
 import TeamPanel from './components/TeamPanel.vue';
 import UnitBrowser from './components/UnitBrowser.vue';
 import UnitDetail from './components/UnitDetail.vue';
@@ -20,10 +22,10 @@ onMounted(loadData);
 
 <template>
   <header class="app-header">
-    <div class="brand">
-      <span class="logo" aria-hidden="true">◆</span>
-      <span>Dokkandle <strong>Team Builder</strong></span>
-    </div>
+    <a class="brand" href="https://dokkandle.net/daily" title="Dokkandle">
+      <img :src="art.logo" alt="Dokkandle" width="268" height="64" />
+      <span>Team Builder</span>
+    </a>
     <nav class="pages" aria-label="Pages">
       <button type="button" :class="{ active: page === 'team' }" @click="page = 'team'">Team tools</button>
       <button type="button" :class="{ active: page === 'battlefield' }" @click="page = 'battlefield'">Battlefield</button>
@@ -58,6 +60,7 @@ onMounted(loadData);
   </nav>
 
   <AboutDialog ref="about" />
+  <DragGhost />
   <div v-if="toast" :key="toast.id" class="toast" role="status">{{ toast.message }}</div>
 </template>
 
@@ -71,8 +74,16 @@ onMounted(loadData);
   background: var(--panel);
   height: 52px;
 }
-.brand { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.logo { color: var(--accent); font-size: 1.2rem; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand img { width: auto; height: 26px; }
+.brand span { font-weight: 650; letter-spacing: 0.01em; }
 .pages { display: flex; gap: 4px; flex: 1; }
 .about-button { margin-left: auto; }
 
@@ -98,7 +109,8 @@ onMounted(loadData);
 
 @media (max-width: 899px) {
   .app-header { gap: 8px; padding: 8px 12px; }
-  .brand strong { display: none; }
+  .brand img { height: 20px; }
+  .brand span { display: none; }
   .layout, .layout.battlefield {
     display: block;
     height: auto;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useId } from 'vue';
 import type { LinkEdge } from '../../core/analysis.ts';
+import { titledName } from '../../core/browse.ts';
 import type { Unit } from '../../core/types.ts';
 
 const props = defineProps<{ units: Unit[]; edges: LinkEdge[] }>();
@@ -38,7 +39,7 @@ const lines = computed(() =>
       x2: target.x,
       y2: target.y,
       count: edge.links.length,
-      title: `${source.unit.name} & ${target.unit.name}: ${edge.links.join(', ')}`,
+      title: `${titledName(source.unit)}\n${titledName(target.unit)}\n${edge.links.length} shared: ${edge.links.join(', ')}`,
       touched,
     }];
   }),
@@ -71,7 +72,7 @@ const lines = computed(() =>
       @click="$emit('pick', node.unit)"
       @keydown.enter="$emit('pick', node.unit)"
     >
-      <title>{{ node.unit.name }}</title>
+      <title>{{ titledName(node.unit) }}</title>
       <circle :cx="node.x" :cy="node.y" :r="nodeRadius + 2" class="ring" />
       <image
         :href="base + node.unit.image"

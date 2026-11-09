@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { bestLeadersFor, linkingPartners, sharedLinks, unitsBoostedBy } from '../../core/analysis.ts';
-import { formatMonth } from '../../core/browse.ts';
+import { formatMonth, titledName } from '../../core/browse.ts';
 import type { Unit } from '../../core/types.ts';
+import { art } from '../art.ts';
+import type { DragOrigin } from '../drag.ts';
 import {
   addToTeam,
   favorites,
@@ -19,9 +21,12 @@ import {
   unitsById,
 } from '../store.ts';
 import CategoryText from './CategoryText.vue';
+import UnitCard from './UnitCard.vue';
 import UnitTile from './UnitTile.vue';
 
 type Tab = 'details' | 'partners' | 'leads' | 'leaders';
+
+const LIST_ORIGIN: DragOrigin = { kind: 'list' };
 const tab = ref<Tab>('details');
 
 const unit = computed(() => selectedUnit.value);
@@ -46,9 +51,9 @@ watch(unit, value => {
 });
 
 function linkTooltip(other: Unit) {
-  if (!unit.value) return other.name;
+  if (!unit.value) return titledName(other);
   const links = sharedLinks(unit.value, other);
-  return `${other.name} — ${other.title}\n${links.length} shared: ${links.join(', ')}`;
+  return `${titledName(other)}\n${links.length} shared: ${links.join(', ')}`;
 }
 
 function toggleTeam() {
@@ -61,29 +66,35 @@ function toggleTeam() {
 <template>
   <section v-if="unit && skills" class="detail panel">
     <header class="head">
-      <UnitTile :unit="unit" :favorite="favorites.has(unit.id)" class="portrait" />
+      <UnitCard :unit="unit" class="portrait" />
       <div class="identity">
-        <div class="muted small">{{ unit.title }}</div>
+        <p v-if="unit.title" class="title">[{{ unit.title }}]</p>
         <h2>{{ unit.name }}</h2>
-        <div class="row small">
-          <span class="chip">{{ unit.rarity }}</span>
-          <span class="chip" :class="`type-${unit.type}`"><span class="dot" />{{ unit.class }} {{ unit.type }}</span>
-          <span v-if="unit.cost != null" class="chip">Cost {{ unit.cost }}</span>
-          <span v-if="unit.releaseDate" class="chip" :title="unit.releaseDate">Released {{ formatMonth(unit.releaseDate) }}</span>
-          <span v-if="unit.formOf != null" class="chip">Transformed form</span>
-        </div>
+        <p class="meta">
+          <span v-if="unit.cost != null">Cost {{ unit.cost }}</span>
+          <span v-if="unit.releaseDate" :title="unit.releaseDate">Released {{ formatMonth(unit.releaseDate) }}</span>
+          <span v-if="unit.formOf != null">Transformed form</span>
+        </p>
         <div class="row actions">
           <button v-if="unit.formOf == null" type="button" :class="{ active: isInTeam(unit) }" @click="toggleTeam">
             {{ isInTeam(unit) ? '✓ In team' : '+ Add to team' }}
           </button>
-          <button type="button" :aria-pressed="favorites.has(unit.id)" @click="toggleFavorite(unit)">★ Favorite</button>
+          <button
+            type="button"
+            class="favorite"
+            :aria-pressed="favorites.has(unit.id)"
+            :aria-label="favorites.has(unit.id) ? 'Remove from favorites' : 'Add to favorites'"
+            :title="favorites.has(unit.id) ? 'Remove from favorites' : 'Add to favorites'"
+            @click="toggleFavorite(unit)"
+          >★</button>
           <button
             v-if="unit.eza"
             type="button"
+            class="eza"
             :aria-pressed="showingEza"
-            title="Show Extreme Z-Awakened text and leader skill"
+            :title="showingEza ? 'Showing the Extreme Z-Awakened kit. Click for the base kit.' : 'Show the Extreme Z-Awakened kit'"
             @click="settings.useEza = !settings.useEza"
-          >EZA</button>
+          ><img :src="unit.superEzaPassive ? art.sezaBadge : art.ezaBadge" :alt="unit.superEzaPassive ? 'Super Extreme Z-Awaken' : 'Extreme Z-Awaken'" /></button>
         </div>
       </div>
     </header>
@@ -91,71 +102,68 @@ function toggleTeam() {
     <nav class="tabs" aria-label="Unit details">
       <button type="button" :class="{ active: tab === 'details' }" @click="tab = 'details'">Details</button>
       <button type="button" :class="{ active: tab === 'partners' }" @click="tab = 'partners'">Linking partners</button>
-      <button v-if="unit.formOf == null" type="button" :class="{ active: tab === 'leads' }" @click="tab = 'leads'">
-        As leader
-      </button>
+      <button v-if="unit.formOf == null" type="button" :class="{ active: tab === 'leads' }" @click="tab = 'leads'">As leader</button>
       <button type="button" :class="{ active: tab === 'leaders' }" @click="tab = 'leaders'">Best leaders</button>
     </nav>
 
-    <div class="body">
+    <div class="body" data-drag-scroll>
       <template v-if="tab === 'details'">
-        <div class="stats">
-          <div><span class="muted small">HP</span><strong>{{ unit.hp.toLocaleString('en-US') }}</strong></div>
-          <div><span class="muted small">ATK</span><strong>{{ unit.atk.toLocaleString('en-US') }}</strong></div>
-          <div><span class="muted small">DEF</span><strong>{{ unit.def.toLocaleString('en-US') }}</strong></div>
-          <div v-if="unit.kiMultiplier"><span class="muted small">Ki multiplier</span><strong>{{ unit.kiMultiplier.replace(/^12 Ki Multiplier is /, '') }}</strong></div>
+        <div class="stats" title="Max level with every Hidden Potential node">
+          <div><span>HP</span><strong>{{ unit.hp.toLocaleString('en-US') }}</strong></div>
+          <div><span>ATK</span><strong>{{ unit.atk.toLocaleString('en-US') }}</strong></div>
+          <div><span>DEF</span><strong>{{ unit.def.toLocaleString('en-US') }}</strong></div>
+          <div v-if="unit.kiMultiplier"><span>12 Ki</span><strong>{{ unit.kiMultiplier.replace(/^12 Ki Multiplier is /, '') }}</strong></div>
         </div>
-        <p class="muted small note">Stats at max level with every Hidden Potential node.</p>
 
-        <div v-if="relatedForms.length" class="block">
+        <section v-if="relatedForms.length" class="block">
           <h3>{{ baseUnit ? 'Base card and other forms' : 'Transforms into' }}</h3>
           <div class="tile-grid related">
-            <UnitTile v-for="related in relatedForms" :key="related.id" :unit="related" small :label="related.name" @pick="selectUnit" />
+            <UnitTile v-for="related in relatedForms" :key="related.id" :unit="related" small :label="related.name" :origin="LIST_ORIGIN" @pick="selectUnit" />
           </div>
-        </div>
+        </section>
 
-        <div class="block">
-          <h3>Leader skill <span v-if="unit.leader" class="chip boost">up to {{ unit.maxBoost }}%</span></h3>
+        <section class="block">
+          <h3>Leader skill<span v-if="unit.leader" class="aside">up to {{ unit.maxBoost }}%</span></h3>
           <p><CategoryText :text="skills.leaderSkill || '—'" /></p>
           <p v-if="unit.formOf == null && !unit.leader && skills.leaderSkill" class="muted small">
-            This leader skill has conditions, so it isn't counted in the leader tools.
+            Has conditions, so the leader tools don't count it.
           </p>
-        </div>
-        <div class="block">
+        </section>
+        <section class="block">
           <h3>Super Attack</h3>
           <p>{{ skills.superAttack || '—' }}</p>
-        </div>
-        <div v-if="skills.ultraSuperAttack" class="block">
+        </section>
+        <section v-if="skills.ultraSuperAttack" class="block">
           <h3>Ultra Super Attack</h3>
           <p>{{ skills.ultraSuperAttack }}</p>
-        </div>
-        <div class="block">
+        </section>
+        <section class="block">
           <h3>Passive skill</h3>
           <p class="pre"><CategoryText :text="skills.passive || '—'" /></p>
-        </div>
-        <div v-if="showingEza && unit.superEzaPassive" class="block">
-          <h3>Super Extreme passive</h3>
+        </section>
+        <section v-if="showingEza && unit.superEzaPassive" class="block">
+          <h3>Super EZA passive</h3>
           <p class="pre"><CategoryText :text="unit.superEzaPassive" /></p>
-        </div>
-        <div v-if="skills.activeSkill" class="block">
+        </section>
+        <section v-if="skills.activeSkill" class="block">
           <h3>Active skill</h3>
           <p>{{ skills.activeSkill }}</p>
           <p v-if="skills.activeSkillCondition" class="muted small">{{ skills.activeSkillCondition }}</p>
-        </div>
-        <div v-if="unit.transformationCondition && unit.transformationCondition !== skills.activeSkillCondition" class="block">
+        </section>
+        <section v-if="unit.transformationCondition && unit.transformationCondition !== skills.activeSkillCondition" class="block">
           <h3>Transformation condition</h3>
           <p>{{ unit.transformationCondition }}</p>
-        </div>
-        <div class="block">
+        </section>
+        <section class="block">
           <h3>Links</h3>
-          <div class="row">
-            <span v-for="link in unit.links" :key="link" class="chip">{{ link }}</span>
-            <span v-if="unit.links.length === 0" class="muted small">None</span>
+          <div v-if="unit.links.length" class="plates">
+            <span v-for="link in unit.links" :key="link" class="link-plate">{{ link }}</span>
           </div>
-        </div>
-        <div class="block">
+          <p v-else class="muted small">None</p>
+        </section>
+        <section class="block">
           <h3>Categories</h3>
-          <div class="row">
+          <div class="row categories">
             <button
               v-for="category in unit.categories"
               :key="category"
@@ -165,13 +173,13 @@ function toggleTeam() {
               @click="filterByCategory(category)"
             >{{ category }}</button>
           </div>
-        </div>
+        </section>
       </template>
 
       <template v-else-if="tab === 'partners'">
         <p v-if="partners.length === 0" class="empty">No unit shares two or more links with this one.</p>
-        <div v-for="group in partners" :key="group.count" class="block">
-          <h3>{{ group.count }} shared links <span class="muted small">({{ group.units.length }})</span></h3>
+        <section v-for="group in partners" :key="group.count" class="block">
+          <h3>{{ group.count }} shared links<span class="aside">{{ group.units.length }}</span></h3>
           <div class="tile-grid">
             <UnitTile
               v-for="partner in group.units"
@@ -180,17 +188,18 @@ function toggleTeam() {
               small
               :tooltip="linkTooltip(partner)"
               :favorite="favorites.has(partner.id)"
+              :origin="LIST_ORIGIN"
               @pick="selectUnit"
             />
           </div>
-        </div>
+        </section>
       </template>
 
       <template v-else-if="tab === 'leads'">
         <p v-if="!unit.leader" class="empty">This leader skill has conditions or no stat boost, so it isn't counted here.</p>
         <p v-else-if="leads.length === 0" class="empty">No units are boosted by this leader.</p>
-        <div v-for="group in leads" :key="group.boost" class="block">
-          <h3>+{{ group.boost }}% <span class="muted small">({{ group.units.length }} units, most shared links first)</span></h3>
+        <section v-for="group in leads" :key="group.boost" class="block">
+          <h3>+{{ group.boost }}%<span class="aside">{{ group.units.length }} units, most shared links first</span></h3>
           <div class="tile-grid">
             <UnitTile
               v-for="entry in group.units"
@@ -200,27 +209,31 @@ function toggleTeam() {
               :label="`${entry.sharedLinks} links`"
               :tooltip="linkTooltip(entry.unit)"
               :favorite="favorites.has(entry.unit.id)"
+              :origin="LIST_ORIGIN"
               @pick="selectUnit"
             />
           </div>
-        </div>
+        </section>
       </template>
 
       <template v-else>
         <p v-if="leaders.length === 0" class="empty">No leader skill without conditions boosts this unit.</p>
-        <div v-else class="tile-grid">
-          <UnitTile
-            v-for="entry in leaders"
-            :key="entry.leader.id"
-            :unit="entry.leader"
-            small
-            :label="`${entry.boost}%`"
-            :tooltip="`${entry.leader.name}: +${entry.boost}%, ${entry.sharedLinks} shared links`"
-            :favorite="favorites.has(entry.leader.id)"
-            @pick="selectUnit"
-          />
-        </div>
-        <p class="muted small note">Top 20 leaders, ranked by boost and then shared links.</p>
+        <template v-else>
+          <div class="tile-grid">
+            <UnitTile
+              v-for="entry in leaders"
+              :key="entry.leader.id"
+              :unit="entry.leader"
+              small
+              :label="`${entry.boost}%`"
+              :tooltip="`${titledName(entry.leader)}\n+${entry.boost}%, ${entry.sharedLinks} shared links`"
+              :favorite="favorites.has(entry.leader.id)"
+              :origin="LIST_ORIGIN"
+              @pick="selectUnit"
+            />
+          </div>
+          <p class="muted small">Top 20 by boost, then by shared links.</p>
+        </template>
       </template>
     </div>
   </section>
@@ -229,21 +242,63 @@ function toggleTeam() {
 
 <style scoped>
 .detail { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.head { display: flex; gap: 12px; padding: 12px; }
-.portrait { width: 96px; flex: none; }
-.identity { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-h2 { margin: 0; font-size: 1.15rem; line-height: 1.2; }
-h3 { margin: 0 0 4px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--type); }
-.actions { margin-top: 2px; }
-.body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+.head { display: flex; gap: 14px; align-items: center; padding: 12px 14px; }
+.portrait { width: 104px; flex: none; }
+.identity { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.title { margin: 0; color: var(--muted); font-size: 0.85rem; }
+h2 { margin: 0; font-size: 1.2rem; line-height: 1.2; }
+.meta { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.meta span + span::before { content: '·'; margin: 0 6px; }
+.actions { margin-top: 4px; }
+.favorite { color: var(--muted); font-size: 1rem; line-height: 1; padding: 5px 9px; }
+.favorite[aria-pressed='true'] { background: var(--panel-2); border-color: var(--accent); color: var(--accent); }
+.eza { padding: 0 4px; line-height: 0; background: none; }
+.eza img { height: 30px; filter: grayscale(1); opacity: 0.5; transition: filter 0.12s, opacity 0.12s; }
+.eza[aria-pressed='true'] { background: none; border-color: var(--accent); }
+.eza[aria-pressed='true'] img { filter: none; opacity: 1; }
+
+.head { flex: none; }
+.body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding: 14px; overflow-y: auto; }
+.body > * { flex-shrink: 0; }
+h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+.aside { color: var(--muted); font-size: 0.82rem; font-weight: 400; }
 .block p { margin: 0; }
+.block p + p { margin-top: 4px; }
 .pre { white-space: pre-line; }
-.stats { display: flex; gap: 20px; flex-wrap: wrap; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .stats div { display: flex; flex-direction: column; }
-.stats strong { font-size: 1.05rem; }
-.note { margin: -8px 0 0; }
-.boost { text-transform: none; letter-spacing: 0; color: var(--text); }
+.stats span { color: var(--muted); font-size: 0.8rem; }
+.stats strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+
+.plates { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.link-plate {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 6px;
+  border: 7px solid transparent;
+  border-image: url('../assets/link-plate.webp') 15 16 16 15 fill / 7px 8px 8px 7px stretch;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.9);
+  white-space: nowrap;
+}
+.categories { gap: 6px; }
+
 .tile-grid { --tile: 58px; }
 .tile-grid.related { --tile: 72px; }
+
+@media (max-width: 899px) {
+  .portrait { width: 88px; }
+}
 </style>

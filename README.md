@@ -8,7 +8,11 @@ tools from dokkantools.com, which is no longer updated.
 - **Unit details**: stats, base or EZA skills, transformations, linking partners, the units it boosts as
   leader, and the best leaders for it.
 - **Team tools**: a shared-links graph, leaders that boost every member, and what each member would do as leader.
+  Drag units into the team, between members to reorder, or out to remove them.
 - **Battlefield**: plan 16 teams where each card is used once, with leader and friend boosts marked on every card.
+  Drag units onto any slot, between slots and teams to move or swap them, or off the board to remove them.
+
+Cards use the game's own frames, type and rarity icons and LR lightning, taken from DokkanDaily.
 
 Everything runs in the browser. There is no backend; favorites, the team and the Battlefield plan are kept in
 `localStorage`.

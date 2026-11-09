@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { titledName } from '../../core/browse.ts';
 import type { Unit } from '../../core/types.ts';
+import { drag, startDrag } from '../drag.ts';
+import type { DragOrigin } from '../drag.ts';
+import UnitCard from './UnitCard.vue';
 
-defineProps<{
+const props = defineProps<{
   unit: Unit;
   label?: string | null;
   favorite?: boolean;
@@ -9,104 +13,117 @@ defineProps<{
   selected?: boolean;
   small?: boolean;
   tooltip?: string;
+  /** Set to make the tile draggable. */
+  origin?: DragOrigin;
 }>();
 defineEmits<{ pick: [unit: Unit] }>();
 
-const base = import.meta.env.BASE_URL;
+function onPointerDown(event: PointerEvent) {
+  if (props.origin) startDrag(event, props.unit, props.origin);
+}
 </script>
 
 <template>
   <button
     type="button"
     class="tile"
-    :class="[`type-${unit.type}`, { small, selected, checked }]"
-    :title="tooltip ?? `${unit.name} — ${unit.title}`"
+    :class="{ small, selected, checked, draggable: origin, lifted: drag.unit?.id === unit.id }"
+    :title="tooltip ?? titledName(unit)"
+    @pointerdown="onPointerDown"
     @click="$emit('pick', unit)"
   >
-    <span class="portrait" :class="unit.class === 'Super' ? 'super' : 'extreme'">
-      <img :src="base + unit.image" :alt="unit.name" loading="lazy" decoding="async" width="250" height="250" />
-      <span class="rarity" :class="unit.rarity">{{ unit.rarity }}</span>
-      <span class="type">{{ unit.class === 'Super' ? 'S' : 'E' }}·{{ unit.type }}</span>
-      <span v-if="unit.formOf != null" class="form" title="Transformed form">↻</span>
-      <span v-if="favorite" class="star" title="Favorite">★</span>
-      <span v-if="checked" class="check" title="Added">✓</span>
+    <span class="frame">
+      <UnitCard :unit="unit" />
+      <span v-if="checked" class="check" aria-label="In team">✓</span>
+      <span v-else-if="unit.formOf != null" class="form" title="Transformed form">↻</span>
+      <span v-if="favorite" class="star" aria-label="Favorite">★</span>
     </span>
     <span v-if="label" class="label">{{ label }}</span>
   </button>
 </template>
 
 <style scoped>
+/* A button only grows to fit its content, and the card art is absolutely positioned, so give it the full width. */
 .tile {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-  padding: 0;
-  border: none;
-  background: none;
+  gap: 3px;
+  width: 100%;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .tile:hover { background: none; }
-.tile:hover .portrait { filter: brightness(1.12); }
+.tile.draggable { cursor: grab; }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
-.portrait {
+.frame {
   position: relative;
   display: block;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid var(--type);
-  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--type) 55%, white 10%), color-mix(in srgb, var(--type) 35%, black) 75%);
+  transition: transform 0.12s ease, filter 0.12s ease;
 }
-.portrait.super { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--super) 70%, transparent); }
-.portrait.extreme { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--extreme) 70%, transparent); }
-.selected .portrait { outline: 3px solid var(--accent); outline-offset: 1px; }
-.checked .portrait img { opacity: 0.55; }
+.tile:hover .frame { transform: translateY(-2px); filter: brightness(1.08); }
+.selected .frame { filter: drop-shadow(0 0 1px var(--accent)) drop-shadow(0 0 3px var(--accent)); }
+.checked .card { opacity: 0.45; }
+.lifted .frame { opacity: 0.35; }
 
-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.rarity, .type, .form, .star, .check {
+.check,
+.form,
+.star {
   position: absolute;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 2px 3px;
-  border-radius: 4px;
-  color: #fff;
-  text-shadow: 0 1px 1px rgb(0 0 0 / 0.6);
-}
-.rarity { left: 2px; bottom: 2px; background: rgb(0 0 0 / 0.55); }
-.rarity.LR { background: linear-gradient(90deg, #e74c3c, #f1c40f, #2ecc71, #3498db, #9b59b6); }
-.rarity.UR { background: #b8860b; }
-.type { right: 2px; top: 2px; background: color-mix(in srgb, var(--type) 85%, black); }
-.form { left: 2px; top: 2px; background: rgb(0 0 0 / 0.6); font-size: 11px; }
-.star { right: 2px; bottom: 2px; background: none; color: var(--accent); font-size: 13px; padding: 0; }
-.check {
-  inset: 0;
+  z-index: 6;
   display: grid;
   place-items: center;
-  font-size: 26px;
-  background: rgb(0 0 0 / 0.25);
-  color: var(--good);
+  line-height: 1;
+  pointer-events: none;
+}
+.check {
+  left: 0;
+  top: 2px;
+  width: 22%;
+  min-width: 15px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--good);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.form {
+  left: 0;
+  top: 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.65);
+  color: #fff;
+  font-size: 11px;
+}
+.star {
+  right: 4%;
+  bottom: 12%;
+  color: var(--accent);
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
 }
 
 .label {
-  text-align: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: var(--panel-2);
-  border-radius: 4px;
-  padding: 1px 2px;
-  white-space: nowrap;
   overflow: hidden;
+  padding: 1px 3px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.small .rarity, .small .type { display: none; }
-.small .label { font-size: 0.7rem; }
+.small .label { font-size: 0.68rem; }
+.small .star { font-size: 11px; }
 </style>

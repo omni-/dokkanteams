@@ -100,6 +100,11 @@ export function sortValue(unit: Unit, key: SortKey): number | string | null {
   }
 }
 
+/** "[Title] Name", which tells apart cards of the same character. */
+export function titledName(unit: Pick<Unit, 'name' | 'title'>): string {
+  return unit.title ? `[${unit.title}] ${unit.name}` : unit.name;
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** The short value shown under a unit's portrait for the current sort. */

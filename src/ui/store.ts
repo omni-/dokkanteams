@@ -3,6 +3,7 @@ import {
   addToBattlefield,
   clearBattlefieldTeam,
   emptyBattlefield,
+  placeOnBattlefield,
   removeFromBattlefield,
   restoreBattlefield,
   usedUnitIds,
@@ -10,8 +11,21 @@ import {
 import type { AddResult, Battlefield } from '../core/battlefield.ts';
 import { emptyFilters } from '../core/browse.ts';
 import type { BrowseFilters, SortDirection, SortKey } from '../core/browse.ts';
+import { placeInTeam } from '../core/team.ts';
 import type { Dataset, Unit } from '../core/types.ts';
+import { onDrop } from './drag.ts';
+import type { DragOrigin, DropTarget } from './drag.ts';
 import { loadSaved, save } from './storage.ts';
+
+type FailureReason = Exclude<AddResult, { ok: true }>['reason'];
+
+export const FAILURE_MESSAGES: Record<FailureReason, string> = {
+  used: 'That card is already in another Battlefield team.',
+  full: 'This team is full.',
+  duplicate: 'A card of that character is already in this team.',
+  form: "Transformed forms can't be fielded on their own.",
+  'no-team': 'Pick a team first.',
+};
 
 export type Page = 'team' | 'battlefield';
 
@@ -100,8 +114,13 @@ export function isInTeam(unit: Unit): boolean {
   return teamIds.value.includes(unit.id);
 }
 
-export function addToTeam(unit: Unit): void {
-  if (!isInTeam(unit)) teamIds.value = [...teamIds.value, unit.id];
+/** Adds a unit to the team, or moves it if it's already there. */
+export function addToTeam(unit: Unit, beforeId: number | null = null): void {
+  if (unit.formOf != null) {
+    showToast(FAILURE_MESSAGES.form);
+    return;
+  }
+  teamIds.value = placeInTeam(teamIds.value, unit.id, beforeId);
 }
 
 export function removeFromTeam(unit: Unit): void {
@@ -129,6 +148,45 @@ export function clearBattlefieldTeamAt(teamIndex: number): void {
 export function clearWholeBattlefield(): void {
   battlefield.value = emptyBattlefield();
 }
+
+export type DropPreview = 'add' | 'move' | 'remove' | 'none';
+
+/** What letting go would do, shown on the dragged card. Mirrors dropUnit. */
+export function dropPreview(unit: Unit, origin: DragOrigin, target: DropTarget | null): DropPreview {
+  if (target?.kind === 'team') {
+    if (unit.formOf != null) return 'none';
+    return origin.kind === 'team' || isInTeam(unit) ? 'move' : 'add';
+  }
+  if (target?.kind === 'battlefield') {
+    if (unit.formOf != null) return 'none';
+    return origin.kind === 'battlefield' ? 'move' : 'add';
+  }
+  return origin.kind === 'team' || origin.kind === 'battlefield' ? 'remove' : 'none';
+}
+
+export function dropUnit(unit: Unit, origin: DragOrigin, target: DropTarget | null): void {
+  if (target?.kind === 'team') {
+    addToTeam(unit, target.beforeId);
+    return;
+  }
+
+  if (target?.kind === 'battlefield') {
+    const result = placeOnBattlefield(battlefield.value, target, unit, unitsById.value);
+    if (!result.ok) {
+      showToast(FAILURE_MESSAGES[result.reason]);
+      return;
+    }
+    battlefield.value = result.battlefield;
+    activeBattlefieldTeam.value = target.team;
+    return;
+  }
+
+  // Dropped outside every team: dragging a unit out of one takes it off.
+  if (origin.kind === 'team') removeFromTeam(unit);
+  else if (origin.kind === 'battlefield') removeBattlefieldUnit(unit.id);
+}
+
+onDrop(dropUnit);
 
 /** Narrows the browser to one category, e.g. from a category name in a leader skill. */
 export function filterByCategory(category: string): void {

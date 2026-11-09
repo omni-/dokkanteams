@@ -60,6 +60,77 @@ export function addToBattlefield(
   return { ok: true, battlefield: battlefield.map((existing, index) => (index === teamIndex ? updated : existing)) };
 }
 
+export const SLOTS_PER_TEAM = 2 + FOLLOWERS_PER_TEAM;
+
+/** A place on the Battlefield. Slot 0 is the leader, 1 the friend and 2 to 6 the other five. */
+export interface SlotRef {
+  team: number;
+  slot: number;
+}
+
+export function locateUnit(battlefield: Battlefield, unitId: number): SlotRef | null {
+  for (let team = 0; team < battlefield.length; team++) {
+    const slot = toSlots(battlefield[team]).indexOf(unitId);
+    if (slot >= 0) return { team, slot };
+  }
+  return null;
+}
+
+/**
+ * Drops `unit` on a team, either on a given slot or, when `slot` is null, in the team's next open slot.
+ * A unit already on the Battlefield moves, swapping places with whoever held the target slot.
+ * A unit from outside the Battlefield replaces the target slot's occupant, which goes back to the pool.
+ */
+export function placeOnBattlefield(
+  battlefield: Battlefield,
+  target: { team: number; slot: number | null },
+  unit: Unit,
+  unitsById: ReadonlyMap<number, Unit>,
+): AddResult {
+  if (!battlefield[target.team]) return { ok: false, reason: 'no-team' };
+  if (!isFieldable(unit)) return { ok: false, reason: 'form' };
+
+  const from = locateUnit(battlefield, unit.id);
+  if (target.slot == null) {
+    if (from?.team === target.team) return { ok: true, battlefield };
+    const without = from ? removeFromBattlefield(battlefield, unit.id) : battlefield;
+    return addToBattlefield(without, target.team, unit, unitsById);
+  }
+  if (target.slot < 0 || target.slot >= SLOTS_PER_TEAM) return { ok: false, reason: 'no-team' };
+
+  const slots = battlefield.map(toSlots);
+  const occupant = slots[target.team][target.slot];
+  if (occupant === unit.id) return { ok: true, battlefield };
+  if (from) slots[from.team][from.slot] = occupant;
+  slots[target.team][target.slot] = unit.id;
+
+  const touched = from ? [target.team, from.team] : [target.team];
+  if (touched.some(team => hasSameCharacterTwice(slots[team], unitsById))) return { ok: false, reason: 'duplicate' };
+
+  return { ok: true, battlefield: slots.map(fromSlots) };
+}
+
+function toSlots(team: BattlefieldTeam): Array<number | null> {
+  const followers = Array.from({ length: FOLLOWERS_PER_TEAM }, (_, index) => team.followers[index] ?? null);
+  return [team.leader1, team.leader2, ...followers];
+}
+
+// Followers stay packed to the front, so a unit dropped on any empty follower slot lands after the others.
+function fromSlots(slots: Array<number | null>): BattlefieldTeam {
+  return {
+    leader1: slots[0] ?? null,
+    leader2: slots[1] ?? null,
+    followers: slots.slice(2).filter((id): id is number => id != null),
+  };
+}
+
+function hasSameCharacterTwice(ids: Array<number | null>, unitsById: ReadonlyMap<number, Unit>): boolean {
+  const members = ids
+    .map(id => (id == null ? undefined : unitsById.get(id)))
+    .filter((member): member is Unit => member != null);
+  return members.some((member, index) => members.slice(index + 1).some(other => !canShareTeam(member, other)));
+}
+
 export function removeFromBattlefield(battlefield: Battlefield, unitId: number): Battlefield {
   return battlefield.map(team => ({
     leader1: team.leader1 === unitId ? null : team.leader1,

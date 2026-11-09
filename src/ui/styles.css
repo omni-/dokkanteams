@@ -55,6 +55,12 @@ body {
 
 button, input, select { font: inherit; color: inherit; }
 
+* { scrollbar-width: thin; scrollbar-color: var(--panel-3) transparent; }
+
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+
 button {
   cursor: pointer;
   border: 1px solid var(--border);
@@ -110,6 +116,7 @@ input[type='search'], input[type='text'] {
 button.chip { border: 1px solid transparent; }
 
 .tabs {
+  flex: none;
   display: flex;
   gap: 4px;
   border-bottom: 1px solid var(--border);

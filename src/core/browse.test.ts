@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyFilters, filterUnits, sortLabel, sortUnits } from './browse.ts';
+import { emptyFilters, filterUnits, sortLabel, sortUnits, titledName } from './browse.ts';
 import { makeUnit } from './test-helpers.ts';
 
 describe('sortUnits by release date', () => {
@@ -36,6 +36,24 @@ describe('sortUnits by leader', () => {
     const sorted = sortUnits([narrow, weak, wide], 'leader', 'desc');
 
     expect(sorted.map(unit => unit.id)).toEqual([wide.id, narrow.id, weak.id]);
+  });
+});
+
+describe('titledName', () => {
+  it('puts the bracketed title before the name', () => {
+    const unit = makeUnit({ name: 'Third Eye Gomah', title: 'Threat of the Third Eye' });
+
+    const result = titledName(unit);
+
+    expect(result).toBe('[Threat of the Third Eye] Third Eye Gomah');
+  });
+
+  it('leaves out empty brackets when there is no title', () => {
+    const unit = makeUnit({ name: 'Giant Gomah', title: '' });
+
+    const result = titledName(unit);
+
+    expect(result).toBe('Giant Gomah');
   });
 });
 

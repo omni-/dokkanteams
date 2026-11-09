@@ -3,7 +3,11 @@ import { computed, ref } from 'vue';
 import { SORT_KEYS, emptyFilters, filterUnits, sortLabel, sortUnits } from '../../core/browse.ts';
 import { RARITIES, UNIT_CLASSES, UNIT_TYPES } from '../../core/types.ts';
 import type { Unit } from '../../core/types.ts';
+import { art } from '../art.ts';
+import type { DragOrigin } from '../drag.ts';
 import {
+  FAILURE_MESSAGES,
+  activeBattlefieldTeam,
   addToActiveBattlefieldTeam,
   addToTeam,
   favorites,
@@ -18,7 +22,6 @@ import {
   units,
   unitsById,
   usedInBattlefield,
-  activeBattlefieldTeam,
 } from '../store.ts';
 import CategoryPicker from './CategoryPicker.vue';
 import UnitTile from './UnitTile.vue';
@@ -26,12 +29,13 @@ import UnitTile from './UnitTile.vue';
 const props = defineProps<{ mode: 'team' | 'battlefield' }>();
 const emit = defineEmits<{ picked: [unit: Unit] }>();
 
+const LIST_ORIGIN: DragOrigin = { kind: 'list' };
 const showFilters = ref(false);
 
 const visible = computed(() => {
   const hidden = props.mode === 'battlefield' ? usedInBattlefield.value : undefined;
-  const battlefieldFilters = props.mode === 'battlefield' ? { ...filters, showForms: false } : filters;
-  return sortUnits(filterUnits(units.value, battlefieldFilters, favorites.value, hidden), sort.key, sort.direction);
+  const activeFilters = props.mode === 'battlefield' ? { ...filters, showForms: false } : filters;
+  return sortUnits(filterUnits(units.value, activeFilters, favorites.value, hidden), sort.key, sort.direction);
 });
 
 const activeFilterCount = computed(() =>
@@ -52,18 +56,10 @@ function setSort(key: typeof sort.key) {
   else Object.assign(sort, { key, direction: 'desc' });
 }
 
-const failureMessages = {
-  used: 'That card is already in another Battlefield team.',
-  full: 'This team is full. Pick another team on the right.',
-  duplicate: 'A card of that character is already in this team.',
-  form: "Transformed forms can't be fielded on their own.",
-  'no-team': 'Pick a team first.',
-} as const;
-
 function pick(unit: Unit) {
   if (props.mode === 'battlefield') {
     const result = addToActiveBattlefieldTeam(unit);
-    if (!result.ok) showToast(failureMessages[result.reason]);
+    if (!result.ok) showToast(FAILURE_MESSAGES[result.reason]);
     return;
   }
   if (settings.quickAdd) {
@@ -75,18 +71,16 @@ function pick(unit: Unit) {
   emit('picked', unit);
 }
 
-function sharedLabel(unit: Unit) {
+function tileLabel(unit: Unit) {
   return settings.showLabel ? sortLabel(unit, sort.key) : null;
 }
-
-const sortTitle = computed(() => SORT_KEYS.find(option => option.key === sort.key)?.label ?? '');
 </script>
 
 <template>
   <section class="browser panel">
     <div class="controls">
       <div class="row nowrap">
-        <input v-model="filters.name" type="search" placeholder="Search name or title…" aria-label="Search units" />
+        <input v-model="filters.name" type="search" placeholder="Search name or title" aria-label="Search units" />
         <button type="button" class="filters-toggle" :aria-expanded="showFilters" @click="showFilters = !showFilters">
           Filters<span v-if="activeFilterCount"> ({{ activeFilterCount }})</span>
         </button>
@@ -99,9 +93,12 @@ const sortTitle = computed(() => SORT_KEYS.find(option => option.key === sort.ke
             v-for="rarity in RARITIES"
             :key="rarity"
             type="button"
+            class="rarity"
+            :aria-label="rarity"
+            :title="rarity"
             :aria-pressed="filters.rarities.includes(rarity)"
             @click="filters.rarities = toggleIn(filters.rarities, rarity)"
-          >{{ rarity }}</button>
+          ><img :src="art.rarity[rarity]" alt="" /></button>
           <span class="divider" />
           <button
             v-for="unitClass in UNIT_CLASSES"
@@ -116,7 +113,8 @@ const sortTitle = computed(() => SORT_KEYS.find(option => option.key === sort.ke
             v-for="type in UNIT_TYPES"
             :key="type"
             type="button"
-            :class="`type-${type} type-button`"
+            class="type-button"
+            :class="`type-${type}`"
             :aria-pressed="filters.types.includes(type)"
             @click="filters.types = toggleIn(filters.types, type)"
           >{{ type }}</button>
@@ -150,9 +148,11 @@ const sortTitle = computed(() => SORT_KEYS.find(option => option.key === sort.ke
       </div>
 
       <div class="row spread small">
-        <span class="muted">{{ visible.length }} units<span v-if="mode === 'battlefield'"> · tap to add to Team {{ activeBattlefieldTeam + 1 }}</span></span>
+        <span class="muted">
+          {{ visible.length }} units<template v-if="mode === 'battlefield'"> · adding to Team {{ activeBattlefieldTeam + 1 }}</template>
+        </span>
         <div class="row">
-          <label class="toggle"><input v-model="settings.showLabel" type="checkbox" /> {{ sortTitle }} label</label>
+          <label class="toggle"><input v-model="settings.showLabel" type="checkbox" /> Values</label>
           <label v-if="mode === 'team'" class="toggle" title="Tapping a unit adds it to the team instead of opening its details">
             <input v-model="settings.quickAdd" type="checkbox" /> Quick add
           </label>
@@ -160,15 +160,16 @@ const sortTitle = computed(() => SORT_KEYS.find(option => option.key === sort.ke
       </div>
     </div>
 
-    <div v-if="visible.length" class="tile-grid grid">
+    <div v-if="visible.length" class="tile-grid grid" data-drag-scroll>
       <UnitTile
         v-for="unit in visible"
         :key="unit.id"
         :unit="unit"
-        :label="sharedLabel(unit)"
+        :label="tileLabel(unit)"
         :favorite="favorites.has(unit.id)"
         :checked="mode === 'team' && isInTeam(unit)"
         :selected="mode === 'team' && !settings.quickAdd && selectedId === unit.id"
+        :origin="LIST_ORIGIN"
         @pick="pick"
       />
     </div>
@@ -184,6 +185,7 @@ const sortTitle = computed(() => SORT_KEYS.find(option => option.key === sort.ke
   overflow: hidden;
 }
 .controls {
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -193,16 +195,21 @@ const sortTitle = computed(() => SORT_KEYS.find(option => option.key === sort.ke
 .nowrap { flex-wrap: nowrap; }
 .filters { display: flex; flex-direction: column; gap: 8px; }
 .filters-toggle { display: none; white-space: nowrap; }
-.divider { width: 1px; align-self: stretch; background: var(--border); }
+.divider { width: 1px; align-self: stretch; margin: 2px 2px; background: var(--border); }
+.rarity { padding: 1px 6px; line-height: 0; }
+.rarity img { width: 26px; height: 26px; }
+.type-button { color: var(--type); font-weight: 600; }
 .type-button[aria-pressed='true'] { background: var(--type); border-color: var(--type); color: #fff; }
 .sort-row { gap: 4px; }
 .sort { padding: 3px 8px; }
 .toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .grid {
+  --tile: 68px;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
   padding: 10px;
   overflow-y: auto;
-  flex: 1;
-  align-content: start;
 }
 
 @media (max-width: 899px) {
