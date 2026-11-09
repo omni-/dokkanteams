@@ -7,6 +7,7 @@ import { art } from '../art.ts';
 import type { DragOrigin } from '../drag.ts';
 import {
   addToTeam,
+  closeDetail,
   favorites,
   fieldableUnits,
   filterByCategory,
@@ -21,6 +22,7 @@ import {
   unitsById,
 } from '../store.ts';
 import CategoryText from './CategoryText.vue';
+import PassiveText from './PassiveText.vue';
 import UnitCard from './UnitCard.vue';
 import UnitTile from './UnitTile.vue';
 
@@ -72,7 +74,10 @@ function toggleTeam() {
         <h2>{{ unit.name }}</h2>
         <p class="meta">
           <span v-if="unit.cost != null">Cost {{ unit.cost }}</span>
+          <span v-if="unit.obtain">{{ unit.obtain === 'premium' ? 'Premium' : 'F2P' }}</span>
           <span v-if="unit.releaseDate" :title="unit.releaseDate">Released {{ formatMonth(unit.releaseDate) }}</span>
+          <span v-if="unit.ezaReleaseDate" :title="unit.ezaReleaseDate">EZA {{ formatMonth(unit.ezaReleaseDate) }}</span>
+          <span v-if="unit.superEzaReleaseDate" :title="unit.superEzaReleaseDate">Super EZA {{ formatMonth(unit.superEzaReleaseDate) }}</span>
           <span v-if="unit.formOf != null">Transformed form</span>
         </p>
         <div class="row actions">
@@ -97,6 +102,7 @@ function toggleTeam() {
           ><img :src="unit.superEzaPassive ? art.sezaBadge : art.ezaBadge" :alt="unit.superEzaPassive ? 'Super Extreme Z-Awaken' : 'Extreme Z-Awaken'" /></button>
         </div>
       </div>
+      <button type="button" class="close" aria-label="Back to the unit list" title="Back to the unit list (Esc)" @click="closeDetail">✕</button>
     </header>
 
     <nav class="tabs" aria-label="Unit details">
@@ -139,11 +145,11 @@ function toggleTeam() {
         </section>
         <section class="block">
           <h3>Passive skill</h3>
-          <p class="pre"><CategoryText :text="skills.passive || '—'" /></p>
+          <PassiveText :text="skills.passive" />
         </section>
         <section v-if="showingEza && unit.superEzaPassive" class="block">
           <h3>Super EZA passive</h3>
-          <p class="pre"><CategoryText :text="unit.superEzaPassive" /></p>
+          <PassiveText :text="unit.superEzaPassive" />
         </section>
         <section v-if="skills.activeSkill" class="block">
           <h3>Active skill</h3>
@@ -251,6 +257,16 @@ h2 { margin: 0; font-size: 1.2rem; line-height: 1.2; }
 .meta { margin: 0; color: var(--muted); font-size: 0.85rem; }
 .meta span + span::before { content: '·'; margin: 0 6px; }
 .actions { margin-top: 4px; }
+.close {
+  align-self: flex-start;
+  margin-left: auto;
+  padding: 2px 9px;
+  border-color: transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 1rem;
+}
+.close:hover { color: var(--text); }
 .favorite { color: var(--muted); font-size: 1rem; line-height: 1; padding: 5px 9px; }
 .favorite[aria-pressed='true'] { background: var(--panel-2); border-color: var(--accent); color: var(--accent); }
 .eza { padding: 0 4px; line-height: 0; background: none; }
@@ -272,7 +288,6 @@ h3 {
 .aside { color: var(--muted); font-size: 0.82rem; font-weight: 400; }
 .block p { margin: 0; }
 .block p + p { margin-top: 4px; }
-.pre { white-space: pre-line; }
 
 .stats { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .stats div { display: flex; flex-direction: column; }
@@ -300,5 +315,6 @@ h3 {
 
 @media (max-width: 899px) {
   .portrait { width: 88px; }
+  .close { display: none; }
 }
 </style>

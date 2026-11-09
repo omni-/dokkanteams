@@ -6,6 +6,9 @@ export const UNIT_CLASSES: readonly UnitClass[] = ['Super', 'Extreme'];
 export const UNIT_TYPES: readonly UnitType[] = ['AGL', 'TEQ', 'INT', 'STR', 'PHY'];
 export const RARITIES: readonly Rarity[] = ['LR', 'UR'];
 
+/** Premium cards come from summon banners; F2P cards from events. */
+export type Obtain = 'premium' | 'f2p';
+
 /** Ki and percentage stat boosts from one leader skill clause or bonus. */
 export interface StatBoost {
   ki: number;
@@ -59,6 +62,12 @@ export interface Unit {
   cost: number | null;
   /** YYYY-MM-DD, taken from the base card for transformed forms. */
   releaseDate: string | null;
+  /** When the card got its Extreme Z-Awakening, YYYY-MM-DD. */
+  ezaReleaseDate: string | null;
+  /** When the card got its Super Extreme Z-Awakening, YYYY-MM-DD. */
+  superEzaReleaseDate: string | null;
+  /** Null when Dokkan Info doesn't say. Transformed forms take the base card's. */
+  obtain: Obtain | null;
   image: string;
   links: string[];
   categories: string[];

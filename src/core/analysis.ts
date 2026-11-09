@@ -175,3 +175,103 @@ export function teamLinkCounts(team: readonly Unit[]): LinkCount[] {
     .map(([link, holders]) => ({ link, units: holders }))
     .sort((a, b) => b.units.length - a.units.length || a.link.localeCompare(b.link));
 }
+
+export interface RotationPair {
+  units: [Unit, Unit];
+  links: string[];
+}
+
+export interface RotationPlan {
+  rotations: RotationPair[];
+  floaters: Unit[];
+}
+
+/** A rotation plan by unit id, kept when the viewer rearranges the rotations. */
+export interface RotationLayout {
+  rotations: Array<[number, number]>;
+  floaters: number[];
+}
+
+function rotationPair(a: Unit, b: Unit): RotationPair {
+  return { units: [a, b], links: sharedLinks(a, b) };
+}
+
+/** Every pair in `team` that can be fielded together, most shared links first. */
+function rotationPairs(team: readonly Unit[]): RotationPair[] {
+  const pairs: RotationPair[] = [];
+  for (let i = 0; i < team.length; i++) {
+    for (let j = i + 1; j < team.length; j++) {
+      if (canShareTeam(team[i], team[j])) pairs.push(rotationPair(team[i], team[j]));
+    }
+  }
+  return pairs.sort((a, b) => b.links.length - a.links.length);
+}
+
+/**
+ * The two rotations (pairs that come in together every other turn) with the most shared links
+ * between them, and everyone else as floaters. A team of two or three gets one rotation.
+ */
+export function bestRotations(team: readonly Unit[]): RotationPlan | null {
+  const pairs = rotationPairs(team);
+  if (pairs.length === 0) return null;
+
+  let rotations = [pairs[0]];
+  let bestTotal = -1;
+  let bestWeaker = -1;
+  for (let i = 0; i < pairs.length; i++) {
+    for (let j = i + 1; j < pairs.length; j++) {
+      const [a, b] = [pairs[i], pairs[j]];
+      if (b.units.some(unit => a.units.includes(unit))) continue;
+      const total = a.links.length + b.links.length;
+      // On a tie, two decent rotations beat one great and one poor.
+      const weaker = Math.min(a.links.length, b.links.length);
+      if (total > bestTotal || (total === bestTotal && weaker > bestWeaker)) {
+        rotations = [a, b];
+        bestTotal = total;
+        bestWeaker = weaker;
+      }
+    }
+  }
+
+  const rotating = new Set(rotations.flatMap(pair => pair.units));
+  return { rotations, floaters: team.filter(unit => !rotating.has(unit)) };
+}
+
+export function layoutOf(plan: RotationPlan): RotationLayout {
+  return {
+    rotations: plan.rotations.map(({ units: [a, b] }) => [a.id, b.id]),
+    floaters: plan.floaters.map(unit => unit.id),
+  };
+}
+
+/** Swaps two units' places, within or between the rotations and the floaters. */
+export function swapInLayout(layout: RotationLayout, a: number, b: number): RotationLayout {
+  const swap = (id: number) => (id === a ? b : id === b ? a : id);
+  return {
+    rotations: layout.rotations.map(([first, second]) => [swap(first), swap(second)]),
+    floaters: layout.floaters.map(swap),
+  };
+}
+
+/** The plan `layout` describes, or null unless it holds exactly the members of `team`. */
+export function planFromLayout(layout: RotationLayout, team: readonly Unit[]): RotationPlan | null {
+  const byId = new Map(team.map(unit => [unit.id, unit]));
+  const ids = [...layout.rotations.flat(), ...layout.floaters];
+  if (ids.length !== byId.size || new Set(ids).size !== ids.length || !ids.every(id => byId.has(id))) return null;
+
+  const unit = (id: number) => byId.get(id) as Unit;
+  return {
+    rotations: layout.rotations.map(([a, b]) => rotationPair(unit(a), unit(b))),
+    floaters: layout.floaters.map(unit),
+  };
+}
+
+/** Reads a saved layout, or null when it's malformed. */
+export function restoreRotationLayout(saved: unknown): RotationLayout | null {
+  if (!saved || typeof saved !== 'object') return null;
+  const { rotations, floaters } = saved as Partial<RotationLayout>;
+  const isId = (value: unknown) => typeof value === 'number';
+  if (!Array.isArray(rotations) || !Array.isArray(floaters) || !floaters.every(isId)) return null;
+  if (!rotations.every(pair => Array.isArray(pair) && pair.length === 2 && pair.every(isId))) return null;
+  return { rotations, floaters };
+}

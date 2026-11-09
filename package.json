@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "vue-tsc --noEmit",
-    "data": "node scripts/build-data.ts"
+    "data": "node scripts/build-data.ts",
+    "obtainment": "node scripts/update-obtainment.ts"
   },
   "dependencies": {
     "vue": "^3.5.45"

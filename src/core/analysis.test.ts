@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   bestLeadersFor,
+  bestRotations,
   commonLeaders,
   linkEdges,
+  layoutOf,
   linkingPartners,
+  planFromLayout,
   possibleTeams,
+  restoreRotationLayout,
   sharedLinks,
+  swapInLayout,
   teamLinkCounts,
   unitsBoostedBy,
 } from './analysis.ts';
@@ -110,5 +115,77 @@ describe('team links', () => {
 
     expect(edges).toEqual([{ source: a.id, target: b.id, links: ['A', 'B'] }]);
     expect(counts.map(entry => [entry.link, entry.units.length])).toEqual([['A', 3], ['B', 2]]);
+  });
+});
+
+describe('bestRotations', () => {
+  it('picks the two pairs with the most shared links in total, not the single best pair', () => {
+    // A+B share 5 but would leave C+D with 1; A+C and B+D share 4 each.
+    const a = makeUnit({ links: ['1', '2', '3', '4', '5', 'a'] });
+    const b = makeUnit({ links: ['1', '2', '3', '4', '5', 'b1', 'b2', 'b3', 'b4'] });
+    const c = makeUnit({ links: ['a', '2', '3', '4', 'c'] });
+    const d = makeUnit({ links: ['b1', 'b2', 'b3', 'b4', 'c'] });
+    const floater = makeUnit({ links: [] });
+
+    const plan = bestRotations([a, b, c, d, floater]);
+
+    expect(plan?.rotations.map(pair => pair.units.map(unit => unit.id))).toEqual([[a.id, c.id], [b.id, d.id]]);
+    expect(plan?.rotations.map(pair => pair.links.length)).toEqual([4, 4]);
+    expect(plan?.floaters).toEqual([floater]);
+  });
+
+  it('never pairs two cards of the same character', () => {
+    const goku = makeUnit({ name: 'Goku', links: ['A', 'B', 'C'] });
+    const otherGoku = makeUnit({ name: 'Goku', links: ['A', 'B', 'C'] });
+    const vegeta = makeUnit({ name: 'Vegeta', links: ['A'] });
+
+    const plan = bestRotations([goku, otherGoku, vegeta]);
+
+    expect(plan?.rotations).toHaveLength(1);
+    expect(plan?.rotations[0].units).toEqual([goku, vegeta]);
+    expect(plan?.floaters).toEqual([otherGoku]);
+  });
+});
+
+describe('rearranged rotations', () => {
+  it('swaps a floater into a rotation and recounts its links', () => {
+    const a = makeUnit({ links: ['A', 'B'] });
+    const b = makeUnit({ links: ['A', 'B'] });
+    const floater = makeUnit({ links: ['A'] });
+    const layout = layoutOf(bestRotations([a, b, floater])!);
+
+    const plan = planFromLayout(swapInLayout(layout, b.id, floater.id), [a, b, floater]);
+
+    expect(plan?.rotations.map(pair => [pair.units.map(unit => unit.id), pair.links])).toEqual([[[a.id, floater.id], ['A']]]);
+    expect(plan?.floaters).toEqual([b]);
+  });
+
+  it('swaps units between two rotations', () => {
+    const units = [makeUnit(), makeUnit(), makeUnit(), makeUnit()];
+    const [a, b, c, d] = units.map(unit => unit.id);
+    const layout = { rotations: [[a, b], [c, d]] as Array<[number, number]>, floaters: [] };
+
+    const swapped = swapInLayout(layout, b, c);
+
+    expect(planFromLayout(swapped, units)?.rotations.map(pair => pair.units.map(unit => unit.id))).toEqual([[a, c], [b, d]]);
+  });
+
+  it('ignores a layout once the team has different members', () => {
+    const units = [makeUnit(), makeUnit(), makeUnit()];
+    const layout = layoutOf(bestRotations(units)!);
+    const changedTeam = [units[0], units[1], makeUnit()];
+
+    const plan = planFromLayout(layout, changedTeam);
+
+    expect(plan).toBeNull();
+  });
+
+  it('rejects malformed saved layouts', () => {
+    const saved = [null, 'x', { rotations: [[1]], floaters: [] }, { rotations: [[1, 2]], floaters: ['3'] }];
+
+    const restored = saved.map(restoreRotationLayout);
+
+    expect(restored).toEqual([null, null, null, null]);
+    expect(restoreRotationLayout({ rotations: [[1, 2]], floaters: [3] })).toEqual({ rotations: [[1, 2]], floaters: [3] });
   });
 });

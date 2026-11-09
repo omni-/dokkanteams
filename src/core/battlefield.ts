@@ -35,7 +35,8 @@ export function usedUnitIds(battlefield: Battlefield): Set<number> {
 
 /**
  * Puts `unit` in the next open slot of team `teamIndex`: first leader, second leader, then followers.
- * Each card can only be used once across the Battlefield, and a team can't hold two cards of the same character.
+ * Each card can only be used once across the Battlefield, and a team can't hold two cards of the same character,
+ * except alt arts.
  */
 export function addToBattlefield(
   battlefield: Battlefield,
@@ -49,7 +50,7 @@ export function addToBattlefield(
   if (usedUnitIds(battlefield).has(unit.id)) return { ok: false, reason: 'used' };
 
   const members = teamMemberIds(team).map(id => unitsById.get(id)).filter((member): member is Unit => member != null);
-  if (members.some(member => !canShareTeam(member, unit))) return { ok: false, reason: 'duplicate' };
+  if (members.some(member => !canShareBattlefieldTeam(member, unit))) return { ok: false, reason: 'duplicate' };
 
   let updated: BattlefieldTeam;
   if (team.leader1 == null) updated = { ...team, leader1: unit.id };
@@ -128,7 +129,13 @@ function hasSameCharacterTwice(ids: Array<number | null>, unitsById: ReadonlyMap
   const members = ids
     .map(id => (id == null ? undefined : unitsById.get(id)))
     .filter((member): member is Unit => member != null);
-  return members.some((member, index) => members.slice(index + 1).some(other => !canShareTeam(member, other)));
+  return members.some((member, index) => members.slice(index + 1).some(other => !canShareBattlefieldTeam(member, other)));
+}
+
+// Unlike normal teams, the game lets a Battlefield team hold an alt art alongside its original.
+// Alt arts share their original's title and name.
+function canShareBattlefieldTeam(a: Unit, b: Unit): boolean {
+  return canShareTeam(a, b) || (a.title === b.title && a.name === b.name);
 }
 
 export function removeFromBattlefield(battlefield: Battlefield, unitId: number): Battlefield {

@@ -53,14 +53,25 @@ describe('addToBattlefield', () => {
   });
 
   it('refuses a second card of the same character in one team', () => {
-    const first = makeUnit({ name: 'Goku' });
+    const first = makeUnit({ name: 'Goku', title: 'Saiyan Raised on Earth' });
     const { battlefield, byId } = fill([first]);
-    const second = makeUnit({ name: 'Goku' });
+    const second = makeUnit({ name: 'Goku', title: 'Kaioken Gamble' });
     byId.set(second.id, second);
 
     const result = addToBattlefield(battlefield, 0, second, byId);
 
     expect(result).toEqual({ ok: false, reason: 'duplicate' });
+  });
+
+  it('lets an alt art join the team of its original', () => {
+    const original = makeUnit({ name: 'Goku', title: 'Thousandfold Plea' });
+    const { battlefield, byId } = fill([original]);
+    const altArt = makeUnit({ name: 'Goku', title: 'Thousandfold Plea' });
+    byId.set(altArt.id, altArt);
+
+    const result = addToBattlefield(battlefield, 0, altArt, byId);
+
+    expect(result.ok && result.battlefield[0].leader2).toBe(altArt.id);
   });
 
   it('refuses transformed forms', () => {
@@ -120,8 +131,8 @@ describe('placeOnBattlefield', () => {
   });
 
   it('refuses a swap that would put the same character in a team twice', () => {
-    const goku = makeUnit({ name: 'Goku' });
-    const otherGoku = makeUnit({ name: 'Goku' });
+    const goku = makeUnit({ name: 'Goku', title: 'Saiyan Raised on Earth' });
+    const otherGoku = makeUnit({ name: 'Goku', title: 'Kaioken Gamble' });
     const vegeta = makeUnit({ name: 'Vegeta' });
     const byId = new Map([goku, otherGoku, vegeta].map(unit => [unit.id, unit]));
     let battlefield = fill([goku, vegeta]).battlefield;
@@ -130,6 +141,17 @@ describe('placeOnBattlefield', () => {
     const result = placeOnBattlefield(battlefield, { team: 0, slot: 1 }, otherGoku, byId);
 
     expect(result).toEqual({ ok: false, reason: 'duplicate' });
+  });
+
+  it("lets an alt art be dropped on a slot in its original's team", () => {
+    const original = makeUnit({ name: 'Goku', title: 'Thousandfold Plea' });
+    const altArt = makeUnit({ name: 'Goku', title: 'Thousandfold Plea' });
+    const byId = new Map([original, altArt].map(unit => [unit.id, unit]));
+    const { battlefield } = fill([original]);
+
+    const result = placeOnBattlefield(battlefield, { team: 0, slot: 4 }, altArt, byId);
+
+    expect(result.ok && result.battlefield[0].followers).toEqual([altArt.id]);
   });
 
   it('finds where a unit sits', () => {

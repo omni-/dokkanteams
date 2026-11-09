@@ -1,9 +1,12 @@
 // Game art used directly in templates. Card frames, type and rarity icons live in UnitCard.vue's CSS.
 import ezaBadge from './assets/eza.png';
 import logo from './assets/dokkandle-logo.png';
+import passiveForever from './assets/passive-forever.png';
+import passiveOnce from './assets/passive-once.png';
 import rarityLR from './assets/card/rarity-LR.png';
 import rarityUR from './assets/card/rarity-UR.png';
 import sezaBadge from './assets/seza.png';
+import type { PassiveIcon } from '../core/passive.ts';
 import type { Rarity } from '../core/types.ts';
 
 export const art = {
@@ -11,4 +14,5 @@ export const art = {
   ezaBadge,
   sezaBadge,
   rarity: { LR: rarityLR, UR: rarityUR } satisfies Record<Rarity, string>,
+  passive: { once: passiveOnce, forever: passiveForever } satisfies Record<PassiveIcon, string>,
 };

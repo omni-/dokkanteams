@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDataset } from './dataset.ts';
+import { buildDataset, resolveObtain } from './dataset.ts';
 import type { ScrapedCharacter } from './dataset.ts';
 
 function scraped(overrides: Partial<ScrapedCharacter> = {}): ScrapedCharacter {
@@ -87,5 +87,40 @@ describe('buildDataset', () => {
     const { dataset } = buildDataset([leader, member, outsider], 'test.json');
 
     expect(dataset.units.find(unit => unit.id === 1032311)?.leaderReach).toBe(2);
+  });
+});
+
+describe('buildDataset obtain and awakening dates', () => {
+  it("marks cards premium or F2P and gives forms their base card's value", () => {
+    const obtain = new Map([[1032311, 'f2p' as const]]);
+
+    const { dataset } = buildDataset([scraped()], 'test.json', { obtain });
+
+    expect(dataset.units.map(unit => unit.obtain)).toEqual(['f2p', 'f2p']);
+  });
+
+  it('keeps EZA dates only for cards with an EZA', () => {
+    const awakened = scraped({ ezaPassive: 'ATK 300%', ezaReleaseDate: '2026-11-02', superEzaReleaseDate: '2026-11-05' });
+    const plain = scraped({ id: 1, name: 'Other', ezaReleaseDate: '2026-11-02', transformations: [] });
+
+    const { dataset } = buildDataset([awakened, plain], 'test.json');
+
+    const byId = new Map(dataset.units.map(unit => [unit.id, unit]));
+    expect(byId.get(1032311)).toMatchObject({ ezaReleaseDate: '2026-11-02', superEzaReleaseDate: '2026-11-05' });
+    expect(byId.get(1)).toMatchObject({ ezaReleaseDate: null, superEzaReleaseDate: null });
+  });
+});
+
+describe('resolveObtain', () => {
+  it('gives alt-art cards their original value and counts other cards without banners as F2P', () => {
+    const original = scraped({ id: 1012931, name: 'Super Gogeta', title: 'Fused Fighting Force' });
+    const altArt = scraped({ id: 1034751, name: 'Super Gogeta', title: 'Fused Fighting Force' });
+    const eventUnit = scraped({ id: 1034611, name: 'Cell Jr.', title: 'Treacherous Clone' });
+    const unchecked = scraped({ id: 1, name: 'Unchecked', title: 'New' });
+    const recorded = { 1012931: 'premium', 1034751: 'no-banner', 1034611: 'no-banner' } as const;
+
+    const obtain = resolveObtain([original, altArt, eventUnit, unchecked], recorded);
+
+    expect([...obtain]).toEqual([[1012931, 'premium'], [1034751, 'premium'], [1034611, 'f2p']]);
   });
 });

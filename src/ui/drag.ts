@@ -5,11 +5,16 @@ import type { Unit } from '../core/types.ts';
 export type DragOrigin =
   | { kind: 'list' }
   | { kind: 'team' }
+  | { kind: 'rotation' }
   | { kind: 'battlefield'; team: number; slot: number };
 
-/** What the pointer is over. Elements opt in with `data-drop` (plus `data-member`, `data-team`, `data-slot`). */
+/**
+ * What the pointer is over. Elements opt in with `data-drop` (plus `data-member`, `data-team`, `data-slot`,
+ * `data-rotation-unit`).
+ */
 export type DropTarget =
   | { kind: 'team'; beforeId: number | null }
+  | { kind: 'rotation'; unitId: number | null }
   | { kind: 'battlefield'; team: number; slot: number | null };
 
 type DropHandler = (unit: Unit, origin: DragOrigin, target: DropTarget | null) => void;
@@ -153,6 +158,11 @@ function findTarget(x: number, y: number): DropTarget | null {
     const after = x > rect.left + rect.width / 2;
     const next = member.dataset.next ? Number(member.dataset.next) : null;
     return { kind: 'team', beforeId: after ? next : Number(member.dataset.member) };
+  }
+
+  if (zone.dataset.drop === 'rotation') {
+    const tile = element.closest<HTMLElement>('[data-rotation-unit]');
+    return { kind: 'rotation', unitId: tile && zone.contains(tile) ? Number(tile.dataset.rotationUnit) : null };
   }
 
   if (zone.dataset.drop === 'battlefield') {

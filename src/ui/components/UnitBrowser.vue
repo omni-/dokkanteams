@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { SORT_KEYS, emptyFilters, filterUnits, sortLabel, sortUnits } from '../../core/browse.ts';
 import { RARITIES, UNIT_CLASSES, UNIT_TYPES } from '../../core/types.ts';
-import type { Unit } from '../../core/types.ts';
+import type { Obtain, Unit } from '../../core/types.ts';
 import { art } from '../art.ts';
 import type { DragOrigin } from '../drag.ts';
 import {
@@ -30,6 +30,9 @@ const props = defineProps<{ mode: 'team' | 'battlefield' }>();
 const emit = defineEmits<{ picked: [unit: Unit] }>();
 
 const LIST_ORIGIN: DragOrigin = { kind: 'list' };
+// Mounting all ~1000 tiles at once stalls slower machines, so the grid starts with this many and
+// adds more as it scrolls near the end.
+const PAGE_SIZE = 120;
 const showFilters = ref(false);
 
 const visible = computed(() => {
@@ -38,10 +41,48 @@ const visible = computed(() => {
   return sortUnits(filterUnits(units.value, activeFilters, favorites.value, hidden), sort.key, sort.direction);
 });
 
+const shownCount = ref(PAGE_SIZE);
+const shown = computed(() => visible.value.slice(0, shownCount.value));
+const grid = ref<HTMLElement | null>(null);
+const sentinel = ref<HTMLElement | null>(null);
+let observer: IntersectionObserver | null = null;
+
+// New filters or a new sort start again from the top, with a short list.
+watch([filters, sort, () => props.mode], () => {
+  shownCount.value = PAGE_SIZE;
+  if (grid.value) grid.value.scrollTop = 0;
+}, { deep: true });
+
+watch(sentinel, (element, previous) => {
+  if (previous) observer?.unobserve(previous);
+  if (element) observer?.observe(element);
+});
+
+onMounted(() => {
+  observer = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    shownCount.value += PAGE_SIZE;
+    // Observing again reports right away whether the end is still in reach, so a tall screen keeps filling.
+    nextTick(() => {
+      if (sentinel.value && observer) {
+        observer.unobserve(sentinel.value);
+        observer.observe(sentinel.value);
+      }
+    });
+  }, { root: grid.value, rootMargin: '0px 0px 600px 0px' });
+  if (sentinel.value) observer.observe(sentinel.value);
+});
+
+onBeforeUnmount(() => observer?.disconnect());
+
 const activeFilterCount = computed(() =>
-  [filters.name.trim(), filters.favoritesOnly, filters.showForms].filter(Boolean).length
+  [filters.name.trim(), filters.favoritesOnly, filters.showForms, filters.obtain].filter(Boolean).length
   + filters.categories.length + filters.classes.length + filters.rarities.length + filters.types.length,
 );
+
+function toggleObtain(value: Obtain) {
+  filters.obtain = filters.obtain === value ? null : value;
+}
 
 function toggleIn<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter(item => item !== value) : [...list, value];
@@ -120,6 +161,9 @@ function tileLabel(unit: Unit) {
           >{{ type }}</button>
         </div>
         <div class="row">
+          <button type="button" :aria-pressed="filters.obtain === 'f2p'" title="Cards from events" @click="toggleObtain('f2p')">F2P</button>
+          <button type="button" :aria-pressed="filters.obtain === 'premium'" title="Cards from summon banners" @click="toggleObtain('premium')">Premium</button>
+          <span class="divider" />
           <button type="button" :aria-pressed="filters.favoritesOnly" @click="filters.favoritesOnly = !filters.favoritesOnly">★ Favorites</button>
           <button
             v-if="mode === 'team'"
@@ -160,9 +204,9 @@ function tileLabel(unit: Unit) {
       </div>
     </div>
 
-    <div v-if="visible.length" class="tile-grid grid" data-drag-scroll>
+    <div v-show="visible.length" ref="grid" class="tile-grid grid" data-drag-scroll>
       <UnitTile
-        v-for="unit in visible"
+        v-for="unit in shown"
         :key="unit.id"
         :unit="unit"
         :label="tileLabel(unit)"
@@ -172,8 +216,9 @@ function tileLabel(unit: Unit) {
         :origin="LIST_ORIGIN"
         @pick="pick"
       />
+      <div v-if="shown.length < visible.length" ref="sentinel" class="sentinel" aria-hidden="true" />
     </div>
-    <p v-else-if="unitsById.size" class="empty">No units match these filters.</p>
+    <p v-if="!visible.length && unitsById.size" class="empty">No units match these filters.</p>
   </section>
 </template>
 
@@ -203,6 +248,7 @@ function tileLabel(unit: Unit) {
 .sort-row { gap: 4px; }
 .sort { padding: 3px 8px; }
 .toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.sentinel { grid-column: 1 / -1; height: 1px; }
 .grid {
   --tile: 68px;
   flex: 1;

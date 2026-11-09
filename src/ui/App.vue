@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { art } from './art.ts';
 import AboutDialog from './components/AboutDialog.vue';
 import BattlefieldBoard from './components/BattlefieldBoard.vue';
@@ -7,7 +7,8 @@ import DragGhost from './components/DragGhost.vue';
 import TeamPanel from './components/TeamPanel.vue';
 import UnitBrowser from './components/UnitBrowser.vue';
 import UnitDetail from './components/UnitDetail.vue';
-import { dataset, loadData, loadError, page, team, toast, usedInBattlefield } from './store.ts';
+import { drag } from './drag.ts';
+import { closeDetail, dataset, detailOpen, loadData, loadError, page, team, toast, usedInBattlefield } from './store.ts';
 
 type MobilePanel = 'browse' | 'detail' | 'team';
 
@@ -17,7 +18,16 @@ const mobilePanel = ref<MobilePanel>('browse');
 
 watch(page, () => (mobilePanel.value = 'browse'));
 
-onMounted(loadData);
+function onKeyDown(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !detailOpen.value || drag.unit || document.querySelector('dialog[open]')) return;
+  closeDetail();
+}
+
+onMounted(() => {
+  loadData();
+  window.addEventListener('keydown', onKeyDown);
+});
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown));
 </script>
 
 <template>
@@ -39,13 +49,11 @@ onMounted(loadData);
   </main>
   <main v-else-if="!dataset" class="message muted">Loading characters…</main>
 
-  <main v-else class="layout" :class="[page, `show-${mobilePanel}`]">
+  <main v-else class="layout" :class="[page, `show-${mobilePanel}`, { 'detail-open': detailOpen && page === 'team' }]">
     <UnitBrowser :mode="page" class="area-browse" @picked="mobilePanel = 'detail'" />
     <template v-if="page === 'team'">
-      <div class="side">
-        <UnitDetail class="area-detail" />
-        <TeamPanel class="area-team" />
-      </div>
+      <UnitDetail class="area-detail" :class="{ closed: !detailOpen }" />
+      <TeamPanel class="area-team" />
     </template>
     <BattlefieldBoard v-else class="area-team" />
   </main>
@@ -65,11 +73,15 @@ onMounted(loadData);
 </template>
 
 <style scoped>
+/* Header and panels line up on a centered column this wide. */
+.app-header,
+.layout { --content-width: 1440px; }
+
 .app-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px 16px;
+  padding: 8px max(16px, calc((100% - var(--content-width)) / 2));
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   height: 52px;
@@ -91,18 +103,22 @@ onMounted(loadData);
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(340px, 5fr) 6fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'list side';
   gap: var(--gap);
-  padding: var(--gap);
+  padding: var(--gap) max(var(--gap), calc((100% - var(--content-width)) / 2));
   height: calc(100vh - 52px);
   height: calc(100dvh - 52px);
 }
 .layout.battlefield { grid-template-columns: minmax(340px, 4fr) 7fr; }
-.side {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--gap);
-  min-height: 0;
+/* The details share the list's cell and cover it while open. */
+.area-browse, .area-detail { grid-area: list; min-height: 0; }
+.area-team { grid-area: side; min-height: 0; }
+
+@media (min-width: 900px) {
+  .area-detail.closed { display: none; }
+  /* Hidden rather than removed, so the list keeps its scroll position. */
+  .layout.detail-open .area-browse { visibility: hidden; }
 }
 
 .mobile-nav { display: none; }
@@ -116,12 +132,9 @@ onMounted(loadData);
     height: auto;
     padding: 8px 8px 72px;
   }
-  .side { display: block; }
-  .layout > *, .side > * { display: none; }
+  .layout > * { display: none; }
   .layout.show-browse .area-browse,
-  .layout.show-detail .side,
   .layout.show-detail .area-detail,
-  .layout.show-team .side,
   .layout.show-team .area-team { display: flex; }
   .area-browse, .area-detail, .area-team { height: calc(100dvh - 52px - 80px); }
   .mobile-nav {

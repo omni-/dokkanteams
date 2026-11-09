@@ -1,4 +1,6 @@
 import { computed, reactive, ref, shallowRef, watch } from 'vue';
+import { bestRotations, layoutOf, planFromLayout, restoreRotationLayout, swapInLayout } from '../core/analysis.ts';
+import type { RotationLayout, RotationPlan } from '../core/analysis.ts';
 import {
   addToBattlefield,
   clearBattlefieldTeam,
@@ -42,6 +44,8 @@ export const allCategories = computed(() =>
 export const page = ref<Page>(loadSaved<Page>('page') === 'battlefield' ? 'battlefield' : 'team');
 export const selectedId = ref<number | null>(null);
 export const selectedUnit = computed(() => (selectedId.value == null ? null : unitsById.value.get(selectedId.value) ?? null));
+/** On wide screens the details cover the unit list while this is set. */
+export const detailOpen = ref(false);
 
 export const settings = reactive({
   minimumLinks: 2,
@@ -64,6 +68,12 @@ export const teamIds = ref<number[]>([]);
 export const team = computed(() =>
   teamIds.value.map(id => unitsById.value.get(id)).filter((unit): unit is Unit => unit != null),
 );
+// Rotations the viewer rearranged. They only apply while the team has exactly the same members.
+const rotationLayout = ref<RotationLayout | null>(null);
+const customRotations = computed(() => (rotationLayout.value ? planFromLayout(rotationLayout.value, team.value) : null));
+export const rotationsRearranged = computed(() => customRotations.value != null);
+/** The team's rotations: the viewer's own arrangement, or else the best one. */
+export const rotations = computed<RotationPlan | null>(() => customRotations.value ?? bestRotations(team.value));
 export const battlefield = ref<Battlefield>(emptyBattlefield());
 export const activeBattlefieldTeam = ref(0);
 export const usedInBattlefield = computed(() => usedUnitIds(battlefield.value));
@@ -90,9 +100,11 @@ function restoreSavedLists() {
   favorites.value = new Set(keepKnown(loadSaved('favorites')));
   teamIds.value = [...new Set(keepKnown(loadSaved('team')))];
   battlefield.value = restoreBattlefield(loadSaved('battlefield'), known);
+  rotationLayout.value = restoreRotationLayout(loadSaved('rotations'));
 
   watch(favorites, value => save('favorites', [...value]), { deep: true });
   watch(teamIds, value => save('team', value), { deep: true });
+  watch(rotationLayout, value => save('rotations', value));
   watch(battlefield, value => save('battlefield', value), { deep: true });
 }
 
@@ -102,6 +114,11 @@ watch(sort, value => save('sort', value), { deep: true });
 
 export function selectUnit(unit: Unit): void {
   selectedId.value = unit.id;
+  detailOpen.value = true;
+}
+
+export function closeDetail(): void {
+  detailOpen.value = false;
 }
 
 export function toggleFavorite(unit: Unit): void {
@@ -131,6 +148,16 @@ export function clearTeam(): void {
   teamIds.value = [];
 }
 
+/** Swaps two team members' places in the rotations. */
+export function swapInRotations(a: Unit, b: Unit): void {
+  if (!rotations.value || a.id === b.id) return;
+  rotationLayout.value = swapInLayout(layoutOf(rotations.value), a.id, b.id);
+}
+
+export function resetRotations(): void {
+  rotationLayout.value = null;
+}
+
 export function addToActiveBattlefieldTeam(unit: Unit): AddResult {
   const result = addToBattlefield(battlefield.value, activeBattlefieldTeam.value, unit, unitsById.value);
   if (result.ok) battlefield.value = result.battlefield;
@@ -157,6 +184,11 @@ export function dropPreview(unit: Unit, origin: DragOrigin, target: DropTarget |
     if (unit.formOf != null) return 'none';
     return origin.kind === 'team' || isInTeam(unit) ? 'move' : 'add';
   }
+  if (target?.kind === 'rotation') {
+    if (unit.formOf != null) return 'none';
+    if (!isInTeam(unit)) return 'add';
+    return target.unitId != null && target.unitId !== unit.id ? 'move' : 'none';
+  }
   if (target?.kind === 'battlefield') {
     if (unit.formOf != null) return 'none';
     return origin.kind === 'battlefield' ? 'move' : 'add';
@@ -167,6 +199,14 @@ export function dropPreview(unit: Unit, origin: DragOrigin, target: DropTarget |
 export function dropUnit(unit: Unit, origin: DragOrigin, target: DropTarget | null): void {
   if (target?.kind === 'team') {
     addToTeam(unit, target.beforeId);
+    return;
+  }
+
+  if (target?.kind === 'rotation') {
+    // Units from outside the team join it; members swap places with the one they're dropped on.
+    const other = target.unitId == null ? undefined : unitsById.value.get(target.unitId);
+    if (!isInTeam(unit)) addToTeam(unit);
+    else if (other) swapInRotations(unit, other);
     return;
   }
 
@@ -192,6 +232,7 @@ onDrop(dropUnit);
 export function filterByCategory(category: string): void {
   filters.categories = [category];
   filters.categoryMode = 'any';
+  detailOpen.value = false;
 }
 
 /** The text to show for a unit: EZA when the unit has it and the viewer wants it. */

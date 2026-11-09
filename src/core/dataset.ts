@@ -1,6 +1,6 @@
 import { leaderBoost, maxLeaderBoost, parseLeaderSkill } from './leader.ts';
 import { RARITIES, UNIT_CLASSES, UNIT_TYPES } from './types.ts';
-import type { Dataset, Rarity, SkillText, Unit, UnitClass, UnitType } from './types.ts';
+import type { Dataset, Obtain, Rarity, SkillText, Unit, UnitClass, UnitType } from './types.ts';
 
 /** The fields of DokkanWebScraper's `Character` that the site reads. */
 export interface ScrapedCharacter {
@@ -12,6 +12,8 @@ export interface ScrapedCharacter {
   type: string;
   cost?: number;
   releaseDate?: string;
+  ezaReleaseDate?: string;
+  superEzaReleaseDate?: string;
   leaderSkill: string;
   ezaLeaderSkill?: string;
   superAttack: string;
@@ -58,14 +60,52 @@ export interface ScrapedTransformation {
   transformedCategories?: string[];
 }
 
+/** What `npm run obtainment` records per card. "no-banner" means Dokkan Info lists no summon banner. */
+export type RecordedObtain = Obtain | 'no-banner';
+
+/**
+ * Premium or F2P for each card Dokkan Info has been asked about. Alt-art cards have no banners of
+ * their own but share their original's name and title, so they take its value; any other card
+ * without a summon banner is F2P.
+ */
+export function resolveObtain(characters: readonly ScrapedCharacter[], recorded: Readonly<Record<string, RecordedObtain>>): Map<number, Obtain> {
+  const byCard = new Map<string, Obtain>();
+  for (const character of characters) {
+    const value = recorded[String(character.id)];
+    if (value === 'premium' || value === 'f2p') byCard.set(cardKey(character), value);
+  }
+
+  const resolved = new Map<number, Obtain>();
+  for (const character of characters) {
+    const value = recorded[String(character.id)];
+    if (value === 'premium' || value === 'f2p') resolved.set(Number(character.id), value);
+    else if (value === 'no-banner') resolved.set(Number(character.id), byCard.get(cardKey(character)) ?? 'f2p');
+  }
+  return resolved;
+}
+
+function cardKey(character: Pick<ScrapedCharacter, 'name' | 'title'>) {
+  return `[${character.title}] ${character.name}`;
+}
+
 export interface BuildResult {
   dataset: Dataset;
   /** Cards left out, with the reason. */
   skipped: string[];
 }
 
+export interface BuildOptions {
+  /** Premium or F2P by base card id. */
+  obtain?: ReadonlyMap<number, Obtain>;
+  now?: Date;
+}
+
 /** Turns scraper output into the site's unit list, with transformed forms flattened into their own units. */
-export function buildDataset(characters: readonly ScrapedCharacter[], source: string, now = new Date()): BuildResult {
+export function buildDataset(
+  characters: readonly ScrapedCharacter[],
+  source: string,
+  { obtain = new Map(), now = new Date() }: BuildOptions = {},
+): BuildResult {
   const units: Unit[] = [];
   const skipped: string[] = [];
   const seen = new Set<number>();
@@ -83,7 +123,7 @@ export function buildDataset(characters: readonly ScrapedCharacter[], source: st
     }
     seen.add(id);
 
-    const base = baseUnit(character, id, traits);
+    const base = baseUnit(character, id, traits, obtain.get(id) ?? null);
     units.push(base);
 
     for (const transformation of character.transformations ?? []) {
@@ -134,7 +174,7 @@ function readTraits(rarity: string, unitClass: string, type: string): Traits | n
   return { rarity: rarity as Rarity, class: unitClass as UnitClass, type: type as UnitType };
 }
 
-function baseUnit(character: ScrapedCharacter, id: number, traits: Traits): Unit {
+function baseUnit(character: ScrapedCharacter, id: number, traits: Traits, obtain: Obtain | null): Unit {
   const base: SkillText = {
     leaderSkill: text(character.leaderSkill) ?? '',
     superAttack: text(character.superAttack) ?? '',
@@ -162,6 +202,9 @@ function baseUnit(character: ScrapedCharacter, id: number, traits: Traits): Unit
     ...traits,
     cost: typeof character.cost === 'number' ? character.cost : null,
     releaseDate: text(character.releaseDate),
+    ezaReleaseDate: eza ? text(character.ezaReleaseDate) : null,
+    superEzaReleaseDate: eza ? text(character.superEzaReleaseDate) : null,
+    obtain,
     image: thumbPath(id),
     links: [...character.links],
     categories: [...character.categories],
