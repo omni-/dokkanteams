@@ -40,6 +40,10 @@ npm run data -- ../DokkanWebScraper/data/20261109DokkanCharacterData.json
 `npm run data` writes `public/data/units.json` and copies any new thumbnails into `public/images/thumbs/`.
 Both are committed, so the deploy doesn't need to scrape. Commit them and push to `main` to publish.
 
+DokkanStats rate-limits busy scrapes, and a card that still fails after its retries is skipped with only a
+warning. If the scrape log has any `Skipping DokkanStats` lines, run it again more gently:
+`DOKKANSTATS_CONCURRENCY=2 DOKKANSTATS_MAX_RETRIES=10 npm run run:dokkanstats`.
+
 ## Leader skills
 
 `src/core/leader.ts` turns leader skill text into targets and boosts. It reads Category, Type, Class and
@@ -54,14 +58,21 @@ any bonus it qualifies for. The EZA leader skill is used when a unit has one.
 - `src/ui/` is the Vue app. `store.ts` holds state and saving; components only render it.
 - `scripts/build-data.ts` turns scraper output into `public/data/units.json`.
 
-## Deploying (GitHub Pages + custom domain)
+## Deploying (Cloudflare Pages)
 
-`.github/workflows/deploy.yml` tests, builds and publishes `dist/` on every push to `main`.
+Cloudflare Pages builds and publishes every push to `main` through its GitHub integration. Project settings:
 
-1. In the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
-2. At the DNS host for dokkandle.net (GoDaddy), add a CNAME record: `builder` → `<owner>.github.io`, where
-   `<owner>` is the user or organization that owns this repository.
-3. In **Settings → Pages**, set the custom domain to `builder.dokkandle.net` and turn on **Enforce HTTPS** once
-   the certificate is issued. `public/CNAME` already holds the domain.
-4. Verify `dokkandle.net` under your account or organization's **Settings → Pages → Verified domains** so no other
-   repository can claim the subdomain.
+| Setting | Value |
+| --- | --- |
+| Production branch | `main` |
+| Build command | `npm test && npm run build` |
+| Build output directory | `dist` |
+| Node version | read from `.node-version` |
+
+The custom domain is a subdomain whose DNS stays at GoDaddy:
+
+1. In the Pages project, open **Custom domains** and add `builder.dokkandle.net` first. Creating the DNS record
+   before this step leaves the domain failing to resolve.
+2. At GoDaddy, add a CNAME record: `builder` → `<project>.pages.dev`.
+
+Use a Pages project rather than a Worker: Workers custom domains need the whole domain on Cloudflare DNS.
