@@ -1,6 +1,6 @@
 import { leaderBoost, maxLeaderBoost, parseLeaderSkill } from './leader.ts';
 import { RARITIES, UNIT_CLASSES, UNIT_TYPES } from './types.ts';
-import type { Dataset, Obtain, Rarity, SkillText, Unit, UnitClass, UnitType } from './types.ts';
+import type { Dataset, LinkSkill, Obtain, Rarity, SkillText, Unit, UnitClass, UnitType } from './types.ts';
 
 /** The fields of DokkanWebScraper's `Character` that the site reads. */
 export interface ScrapedCharacter {
@@ -97,6 +97,8 @@ export interface BuildResult {
 export interface BuildOptions {
   /** Premium or F2P by base card id. */
   obtain?: ReadonlyMap<number, Obtain>;
+  /** Link skills by name. */
+  links?: Record<string, LinkSkill>;
   now?: Date;
 }
 
@@ -104,7 +106,7 @@ export interface BuildOptions {
 export function buildDataset(
   characters: readonly ScrapedCharacter[],
   source: string,
-  { obtain = new Map(), now = new Date() }: BuildOptions = {},
+  { obtain = new Map(), links = {}, now = new Date() }: BuildOptions = {},
 ): BuildResult {
   const units: Unit[] = [];
   const skipped: string[] = [];
@@ -158,7 +160,7 @@ export function buildDataset(
     || a.id - b.id,
   );
 
-  return { dataset: { generatedAt: now.toISOString(), source, units }, skipped };
+  return { dataset: { generatedAt: now.toISOString(), source, units, links }, skipped };
 }
 
 interface Traits {

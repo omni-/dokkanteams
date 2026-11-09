@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { commonLeaders, linkEdges, possibleTeams, teamLinkCounts } from '../../core/analysis.ts';
+import type { RotationSpot } from '../../core/analysis.ts';
 import { titledName } from '../../core/browse.ts';
+import { formatLinkStats, linkStatTotals } from '../../core/links.ts';
 import type { Unit } from '../../core/types.ts';
 import { drag } from '../drag.ts';
 import type { DragOrigin } from '../drag.ts';
 import {
+  arrangeBestRotations,
   clearTeam,
+  dropPreview,
   favorites,
+  linkSkills,
   removeFromTeam,
-  resetRotations,
   rotations,
-  rotationsRearranged,
   selectUnit,
   selectedId,
   settings,
@@ -37,10 +40,25 @@ const teams = computed(() => (tab.value === 'teams' ? possibleTeams(team.value) 
 // While a unit is dragged over the panel: undefined when not over it, null for "at the end", else the id it goes before.
 const insertBefore = computed(() => (drag.unit && drag.target?.kind === 'team' ? drag.target.beforeId : undefined));
 const draggingOut = computed(() => drag.origin?.kind === 'team' && drag.target == null);
-// The rotation member a dragged member would swap with.
-const swapWith = computed(() =>
-  drag.unit && drag.target?.kind === 'rotation' && drag.target.unitId !== drag.unit.id ? drag.target.unitId : null,
-);
+// The rotation spot a dragged unit would land on, to outline it.
+const landingSpot = computed(() => {
+  if (!drag.unit || !drag.origin || drag.target?.kind !== 'rotation' || !drag.target.spot) return null;
+  return dropPreview(drag.unit, drag.origin, drag.target) === 'none' ? null : spotKey(drag.target.spot);
+});
+
+function spotKey(spot: RotationSpot) {
+  if (spot.kind === 'unit') return `unit:${spot.unitId}`;
+  if (spot.kind === 'slot') return `slot:${spot.rotation}-${spot.position}`;
+  return 'floaters';
+}
+
+function linkTotals(links: readonly string[]) {
+  return formatLinkStats(linkStatTotals(links, linkSkills.value));
+}
+
+function linkEffect(link: string) {
+  return linkSkills.value[link]?.effect;
+}
 
 function pickMember(unit: Unit) {
   if (removing.value) removeFromTeam(unit);
@@ -106,8 +124,11 @@ function changeMinimum(delta: number) {
             <h3>Links in this team</h3>
             <ul class="link-list">
               <li v-for="entry in linkCounts" :key="entry.link" class="row spread">
-                <span>{{ entry.link }}</span>
-                <span class="muted small" :title="entry.units.map(titledName).join('\n')">{{ entry.units.length }} of {{ team.length }}</span>
+                <span class="stack">
+                  <span>{{ entry.link }}</span>
+                  <span v-if="linkEffect(entry.link)" class="muted small" title="At link level 10">{{ linkEffect(entry.link) }}</span>
+                </span>
+                <span class="muted small count" :title="entry.units.map(titledName).join('\n')">{{ entry.units.length }} of {{ team.length }}</span>
               </li>
             </ul>
           </section>
@@ -115,14 +136,15 @@ function changeMinimum(delta: number) {
       </template>
 
       <template v-else-if="tab === 'rotations'">
-        <p v-if="!rotations" class="empty">Add at least two units to plan rotations.</p>
+        <p v-if="!rotations" class="empty">Add units to plan rotations.</p>
         <template v-else>
-          <div class="row note">
-            <p class="muted small">
-              A rotation is a pair that comes in together every other turn, so pairs that share more links get more out of
-              them. Drag a unit onto another to swap them.
-            </p>
-            <button v-if="rotationsRearranged" type="button" @click="resetRotations()">Best rotations</button>
+          <div class="row toolbar">
+            <button
+              type="button"
+              :disabled="team.length < 2"
+              title="Pair up the members that share the most links"
+              @click="arrangeBestRotations()"
+            >Best rotations</button>
           </div>
           <div class="rotations" data-drop="rotation">
             <article v-for="(pair, index) in rotations.rotations" :key="index" class="rotation">
@@ -131,37 +153,51 @@ function changeMinimum(delta: number) {
                 <span class="aside">{{ pair.links.length }} shared {{ pair.links.length === 1 ? 'link' : 'links' }}</span>
               </h3>
               <div class="row pair">
-                <UnitTile
-                  v-for="member in pair.units"
-                  :key="member.id"
-                  :unit="member"
-                  small
-                  class="pair-unit"
-                  :class="{ 'swap-target': swapWith === member.id }"
-                  :data-rotation-unit="member.id"
-                  :origin="ROTATION_ORIGIN"
-                  @pick="selectUnit"
-                />
+                <template v-for="(member, position) in pair.units" :key="member?.id ?? `empty-${position}`">
+                  <UnitTile
+                    v-if="member"
+                    :unit="member"
+                    small
+                    class="pair-unit"
+                    :class="{ 'swap-target': landingSpot === `unit:${member.id}` }"
+                    :data-rotation-unit="member.id"
+                    :origin="ROTATION_ORIGIN"
+                    @pick="selectUnit"
+                  />
+                  <div
+                    v-else
+                    class="pair-unit open-spot"
+                    :class="{ 'swap-target': landingSpot === `slot:${index}-${position}` }"
+                    :data-rotation-slot="`${index}-${position}`"
+                    title="Open spot: drag a unit here"
+                  ></div>
+                </template>
                 <div class="row chips">
-                  <span v-for="link in pair.links" :key="link" class="chip">{{ link }}</span>
+                  <span v-for="link in pair.links" :key="link" class="chip" :title="linkEffect(link)">{{ link }}</span>
                 </div>
               </div>
+              <p
+                v-if="linkTotals(pair.links)"
+                class="link-totals"
+                title="Both units get these, at link level 10. Includes effects with conditions; hover a link to see them."
+              >Each gets {{ linkTotals(pair.links) }}</p>
             </article>
-            <article v-if="rotations.floaters.length" class="rotation">
+            <article class="rotation" :class="{ 'drop-here': landingSpot === 'floaters' }" data-rotation-floaters>
               <h3>Floaters<span class="aside">fill the third slot each turn</span></h3>
-              <div class="row">
+              <div v-if="rotations.floaters.length" class="row">
                 <UnitTile
                   v-for="member in rotations.floaters"
                   :key="member.id"
                   :unit="member"
                   small
                   class="pair-unit"
-                  :class="{ 'swap-target': swapWith === member.id }"
+                  :class="{ 'swap-target': landingSpot === `unit:${member.id}` }"
                   :data-rotation-unit="member.id"
                   :origin="ROTATION_ORIGIN"
                   @pick="selectUnit"
                 />
               </div>
+              <p v-else class="muted small">Drag a unit here to make it a floater.</p>
             </article>
           </div>
         </template>
@@ -258,7 +294,10 @@ h3 { margin: 0 0 6px; font-size: 0.95rem; font-weight: 650; }
 .body > * { flex-shrink: 0; }
 .tile-grid { --tile: 58px; }
 .stepper strong { min-width: 1.5em; text-align: center; font-variant-numeric: tabular-nums; }
-.link-list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.link-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.link-list li { flex-wrap: nowrap; align-items: flex-start; }
+.link-list .stack { gap: 1px; }
+.link-list .count { flex: none; }
 .toggle { cursor: pointer; }
 .option { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); }
 .option-head { flex-wrap: nowrap; align-items: flex-start; }
@@ -272,10 +311,17 @@ h3 { margin: 0 0 6px; font-size: 0.95rem; font-weight: 650; }
 .pair { flex-wrap: nowrap; align-items: center; }
 .pair-unit { width: 52px; flex: none; }
 .chips { gap: 4px; }
-.note { flex-wrap: nowrap; align-items: flex-start; justify-content: space-between; }
-.note p { margin: 0; }
-.note button { flex: none; }
+.toolbar { justify-content: flex-end; }
 .rotations { display: flex; flex-direction: column; gap: 12px; }
+.rotation p { margin: 0; }
+.link-totals { font-size: 0.85rem; font-weight: 600; }
+.open-spot {
+  position: relative;
+  aspect-ratio: 1;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+}
+.rotation.drop-here { border-color: var(--accent); }
 /* Outline on the member a dragged unit would swap with. */
 .swap-target::after {
   content: '';

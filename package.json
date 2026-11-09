@@ -14,7 +14,8 @@
     "test": "vitest run",
     "typecheck": "vue-tsc --noEmit",
     "data": "node scripts/build-data.ts",
-    "obtainment": "node scripts/update-obtainment.ts"
+    "obtainment": "node scripts/update-obtainment.ts",
+    "links": "node scripts/update-links.ts"
   },
   "dependencies": {
     "vue": "^3.5.45"

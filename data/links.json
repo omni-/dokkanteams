@@ -1,0 +1,927 @@
+{
+  "All in the Family": {
+    "effect": "DEF +20%",
+    "stats": {
+      "def": 20
+    }
+  },
+  "Android Assault": {
+    "effect": "Ki +2 and DEF +20%",
+    "stats": {
+      "ki": 2,
+      "def": 20
+    }
+  },
+  "Attack of the Clones": {
+    "effect": "Ki +2 and chance of evading enemy's attack (including Super Attack) +5%",
+    "stats": {
+      "ki": 2,
+      "evasion": 5
+    }
+  },
+  "Auto Regeneration": {
+    "effect": "Recovers 5% HP and reduces damage received by 5%",
+    "stats": {
+      "recovery": 5,
+      "damageReduction": 5
+    }
+  },
+  "Battlefield Diva": {
+    "effect": "Ki +3 and chance of evading enemy's attack (including Super Attack) +5%",
+    "stats": {
+      "ki": 3,
+      "evasion": 5
+    }
+  },
+  "Berserker": {
+    "effect": "ATK +30% when HP is 50% or less",
+    "stats": {
+      "atk": 30
+    }
+  },
+  "Big Bad Bosses": {
+    "effect": "ATK & DEF +25%",
+    "stats": {
+      "atk": 25,
+      "def": 25
+    }
+  },
+  "Blazing Battle": {
+    "effect": "Disables enemy's Rampage; ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Bombardment": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Brainiacs": {
+    "effect": "ATK & DEF +15%",
+    "stats": {
+      "atk": 15,
+      "def": 15
+    }
+  },
+  "Brutal Beatdown": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Budding Warrior": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Champion's Strength": {
+    "effect": "Ki +2 and reduces damage received by 5%",
+    "stats": {
+      "ki": 2,
+      "damageReduction": 5
+    }
+  },
+  "Cold Judgment": {
+    "effect": "DEF +25%",
+    "stats": {
+      "def": 25
+    }
+  },
+  "Connoisseur": {
+    "effect": "Recovers 7% HP and DEF +7%",
+    "stats": {
+      "def": 7,
+      "recovery": 7
+    }
+  },
+  "Cooler's Armored Squad": {
+    "effect": "ATK & DEF +25%",
+    "stats": {
+      "atk": 25,
+      "def": 25
+    }
+  },
+  "Cooler's Underling": {
+    "effect": "Ki +2 and chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "crit": 5
+    }
+  },
+  "Courage": {
+    "effect": "Ki +2 and ATK +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10
+    }
+  },
+  "Coward": {
+    "effect": "Ki +2 and chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "crit": 5
+    }
+  },
+  "Crane School": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Deficit Boost": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Demonic Power": {
+    "effect": "ATK +20% and DEF +10%",
+    "stats": {
+      "atk": 20,
+      "def": 10
+    }
+  },
+  "Demonic Ways": {
+    "effect": "Ki +2 and ATK & DEF +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Destroyer of the Universe": {
+    "effect": "ATK +25% and DEF +15%",
+    "stats": {
+      "atk": 25,
+      "def": 15
+    }
+  },
+  "Dismal Future": {
+    "effect": "Ki +2 and chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "crit": 5
+    }
+  },
+  "Dodon Ray": {
+    "effect": "ATK +15% when performing a Super Attack",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Energy Absorption": {
+    "effect": "Ki +3 and recovers 3% HP",
+    "stats": {
+      "ki": 3,
+      "recovery": 3
+    }
+  },
+  "Evil Autocrats": {
+    "effect": "All enemies' DEF -20% and Ki +2",
+    "stats": {
+      "ki": 2,
+      "enemyDefDown": 20
+    }
+  },
+  "Experienced Fighters": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Family Ties": {
+    "effect": "Ki +2 and ATK +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10
+    }
+  },
+  "Fear and Faith": {
+    "effect": "All enemies' DEF -10% and Ki +2",
+    "stats": {
+      "ki": 2,
+      "enemyDefDown": 10
+    }
+  },
+  "Fierce Battle": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Flee": {
+    "effect": "Ki +2 and chance of evading enemy's attack (including Super Attack) +10% when HP is 50% or less",
+    "stats": {
+      "ki": 2,
+      "evasion": 10
+    }
+  },
+  "Formidable Enemy": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Fortuneteller Baba’s Fighter": {
+    "effect": "Ki +3 and ATK & DEF +5%",
+    "stats": {
+      "ki": 3,
+      "atk": 5,
+      "def": 5
+    }
+  },
+  "Frieza's Army": {
+    "effect": "ATK +10% and DEF +20%",
+    "stats": {
+      "atk": 10,
+      "def": 20
+    }
+  },
+  "Frieza's Minion": {
+    "effect": "ATK +20% and DEF +10%",
+    "stats": {
+      "atk": 20,
+      "def": 10
+    }
+  },
+  "Fused Fighter": {
+    "effect": "Ki +2 and ATK & DEF +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5
+    }
+  },
+  "Fusion": {
+    "effect": "Ki +2 and ATK & DEF +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Fusion Failure": {
+    "effect": "Recovers 7% HP",
+    "stats": {
+      "recovery": 7
+    }
+  },
+  "Galactic Visitor": {
+    "effect": "Ki +2 and DEF +20%",
+    "stats": {
+      "ki": 2,
+      "def": 20
+    }
+  },
+  "Galactic Warriors": {
+    "effect": "Ki +2 and ATK & DEF +20%",
+    "stats": {
+      "ki": 2,
+      "atk": 20,
+      "def": 20
+    }
+  },
+  "Gaze of Respect": {
+    "effect": "Ki +2 and ATK & DEF +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Gentleman": {
+    "effect": "Ki +2 and DEF +10%",
+    "stats": {
+      "ki": 2,
+      "def": 10
+    }
+  },
+  "Godly Power": {
+    "effect": "ATK +15% and chance of performing a critical hit +5%",
+    "stats": {
+      "atk": 15,
+      "crit": 5
+    }
+  },
+  "Golden Warrior": {
+    "effect": "All enemies' DEF -10% and Ki +1",
+    "stats": {
+      "ki": 1,
+      "enemyDefDown": 10
+    }
+  },
+  "Golden Z-Fighter": {
+    "effect": "Ki +3 and chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 3,
+      "crit": 5
+    }
+  },
+  "GT": {
+    "effect": "Ki +2 and ATK & DEF +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Guidance of the Dragon Balls": {
+    "effect": "ATK +20% and chance of performing a critical hit +7%",
+    "stats": {
+      "atk": 20,
+      "crit": 7
+    }
+  },
+  "Hardened Grudge": {
+    "effect": "Ki +2 and ATK +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10
+    }
+  },
+  "Hatred of Saiyans": {
+    "effect": "Ki +3 and ATK +10%",
+    "stats": {
+      "ki": 3,
+      "atk": 10
+    }
+  },
+  "Hero": {
+    "effect": "DEF +25%",
+    "stats": {
+      "def": 25
+    }
+  },
+  "Hero of Justice": {
+    "effect": "ATK +25% and chance of performing a critical hit +5%",
+    "stats": {
+      "atk": 25,
+      "crit": 5
+    }
+  },
+  "High Compatibility": {
+    "effect": "Ki +2 and ATK & DEF +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Infighter": {
+    "effect": "ATK +15% and all enemies' DEF -15%",
+    "stats": {
+      "atk": 15,
+      "enemyDefDown": 15
+    }
+  },
+  "Infinite Energy": {
+    "effect": "Ki +2 and ATK, DEF & chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5,
+      "crit": 5
+    }
+  },
+  "Infinite Regeneration": {
+    "effect": "Ki +2, recovers 3% HP and DEF +10%",
+    "stats": {
+      "ki": 2,
+      "def": 10,
+      "recovery": 3
+    }
+  },
+  "Kamehameha": {
+    "effect": "ATK +10% when performing a Super Attack",
+    "stats": {
+      "atk": 10
+    }
+  },
+  "Legendary Power": {
+    "effect": "ATK +15% when performing a Super Attack",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Limit-Breaking Form": {
+    "effect": "ATK +10% when performing a Super Attack",
+    "stats": {
+      "atk": 10
+    }
+  },
+  "Loyalty": {
+    "effect": "Ki +2 and reduces damage received by 5%",
+    "stats": {
+      "ki": 2,
+      "damageReduction": 5
+    }
+  },
+  "Majin": {
+    "effect": "Ki +2 and ATK & DEF +15%",
+    "stats": {
+      "ki": 2,
+      "atk": 15,
+      "def": 15
+    }
+  },
+  "Majin Resurrection Plan": {
+    "effect": "Ki +2 and DEF +20%",
+    "stats": {
+      "ki": 2,
+      "def": 20
+    }
+  },
+  "Master of Magic": {
+    "effect": "ATK +15% and all enemies' DEF -10%",
+    "stats": {
+      "atk": 15,
+      "enemyDefDown": 10
+    }
+  },
+  "Mechanical Menaces": {
+    "effect": "Ki +2 and reduces damage received by 5%",
+    "stats": {
+      "ki": 2,
+      "damageReduction": 5
+    }
+  },
+  "Messenger from the Future": {
+    "effect": "ATK +10%",
+    "stats": {
+      "atk": 10
+    }
+  },
+  "Metamorphosis": {
+    "effect": "Recovers 5% HP and ATK & DEF +10%",
+    "stats": {
+      "atk": 10,
+      "def": 10,
+      "recovery": 5
+    }
+  },
+  "Money Money Money": {
+    "effect": "Ki +2 and DEF +20%",
+    "stats": {
+      "ki": 2,
+      "def": 20
+    }
+  },
+  "More Than Meets the Eye": {
+    "effect": "ATK & DEF +10%",
+    "stats": {
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Namekians": {
+    "effect": "Recovers 7% HP and ATK & DEF +7%",
+    "stats": {
+      "recovery": 7,
+      "atk": 7,
+      "def": 7
+    }
+  },
+  "New": {
+    "effect": "ATK & DEF +20%",
+    "stats": {
+      "atk": 20,
+      "def": 20
+    }
+  },
+  "New Frieza Army": {
+    "effect": "ATK & DEF +25%",
+    "stats": {
+      "atk": 25,
+      "def": 25
+    }
+  },
+  "Nightmare": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Organic Upgrade": {
+    "effect": "Ki +2 and ATK, DEF & chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5,
+      "crit": 5
+    }
+  },
+  "Otherworld Warriors": {
+    "effect": "ATK +20% and DEF +10%",
+    "stats": {
+      "atk": 20,
+      "def": 10
+    }
+  },
+  "Over 9000": {
+    "effect": "ATK & DEF +10%",
+    "stats": {
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Over in a Flash": {
+    "effect": "Ki +3 and ATK +7%",
+    "stats": {
+      "ki": 3,
+      "atk": 7
+    }
+  },
+  "Patrol": {
+    "effect": "Ki +2 and DEF +20%",
+    "stats": {
+      "ki": 2,
+      "def": 20
+    }
+  },
+  "Penguin Village Adventure": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Power Bestowed by God": {
+    "effect": "ATK +10% when performing a Super Attack",
+    "stats": {
+      "atk": 10
+    }
+  },
+  "Prepared for Battle": {
+    "effect": "Ki +2 and ATK & DEF +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5
+    }
+  },
+  "Prodigies": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Respect": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Resurrection 'F'": {
+    "effect": "Ki +1 and ATK & DEF +10%",
+    "stats": {
+      "ki": 1,
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Revival": {
+    "effect": "Ki +2; ATK & DEF +5% and recovers 5% HP when HP is 50% or less",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5,
+      "recovery": 5
+    }
+  },
+  "Royal Lineage": {
+    "effect": "Ki +2 and ATK +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5
+    }
+  },
+  "RR Army": {
+    "effect": "ATK & DEF +10%",
+    "stats": {
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Saiyan Pride": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Saiyan Roar": {
+    "effect": "ATK +25% and DEF +10%",
+    "stats": {
+      "atk": 25,
+      "def": 10
+    }
+  },
+  "Saiyan Warrior Race": {
+    "effect": "ATK +10%",
+    "stats": {
+      "atk": 10
+    }
+  },
+  "Scientist": {
+    "effect": "Ki +2 and DEF +20%",
+    "stats": {
+      "ki": 2,
+      "def": 20
+    }
+  },
+  "Shadow Dragons": {
+    "effect": "ATK & DEF +20%",
+    "stats": {
+      "atk": 20,
+      "def": 20
+    }
+  },
+  "Shattering the Limit": {
+    "effect": "Ki +2 and ATK & DEF +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5
+    }
+  },
+  "Shocking Speed": {
+    "effect": "Ki +2 and DEF +5%",
+    "stats": {
+      "ki": 2,
+      "def": 5
+    }
+  },
+  "Signature Pose": {
+    "effect": "Ki +3 and ATK +7%",
+    "stats": {
+      "ki": 3,
+      "atk": 7
+    }
+  },
+  "Solid Support": {
+    "effect": "ATK +15% and all enemies' DEF -20%",
+    "stats": {
+      "atk": 15,
+      "enemyDefDown": 20
+    }
+  },
+  "Soul vs Soul": {
+    "effect": "Weakens enemy's Regeneration; Ki +2 and ATK & DEF +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5
+    }
+  },
+  "Speedy Retribution": {
+    "effect": "ATK +15% and chance of evading enemy's attack (including Super Attack) +5%",
+    "stats": {
+      "atk": 15,
+      "evasion": 5
+    }
+  },
+  "Strength in Unity": {
+    "effect": "Ki +2 and recovers 3% HP",
+    "stats": {
+      "ki": 2,
+      "recovery": 3
+    }
+  },
+  "Strongest Clan in Space": {
+    "effect": "All enemies' DEF -10% and Ki +2",
+    "stats": {
+      "ki": 2,
+      "enemyDefDown": 10
+    }
+  },
+  "Super Saiyan": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Super Strike": {
+    "effect": "ATK +25%",
+    "stats": {
+      "atk": 25
+    }
+  },
+  "Super-God Combat": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Supreme Power": {
+    "effect": "ATK & DEF +10% and activates Penetration",
+    "stats": {
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Supreme Warrior": {
+    "effect": "Ki +2 and ATK +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10
+    }
+  },
+  "Tag Team of Terror": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Team Bardock": {
+    "effect": "Ki +2 and ATK & DEF +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10,
+      "def": 10
+    }
+  },
+  "Team Turles": {
+    "effect": "Ki +2 and chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "crit": 5
+    }
+  },
+  "Telekinesis": {
+    "effect": "All enemies' DEF -20%",
+    "stats": {
+      "enemyDefDown": 20
+    }
+  },
+  "Telepathy": {
+    "effect": "Ki +2 and chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "crit": 5
+    }
+  },
+  "The First Awakened": {
+    "effect": "ATK +25% and DEF +10%",
+    "stats": {
+      "atk": 25,
+      "def": 10
+    }
+  },
+  "The Ginyu Force": {
+    "effect": "ATK +25% and chance of performing a critical hit +5%",
+    "stats": {
+      "atk": 25,
+      "crit": 5
+    }
+  },
+  "The Hera Clan": {
+    "effect": "Ki +2 and ATK & chance of performing a critical hit +5%",
+    "stats": {
+      "ki": 2,
+      "crit": 5
+    }
+  },
+  "The Incredible Adventure": {
+    "effect": "Ki +3 and ATK & DEF +7%",
+    "stats": {
+      "ki": 3,
+      "atk": 7,
+      "def": 7
+    }
+  },
+  "The Innocents": {
+    "effect": "ATK +15%",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "The Saiyan Lineage": {
+    "effect": "Ki +2 and ATK & DEF +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5
+    }
+  },
+  "The Students": {
+    "effect": "DEF +30%",
+    "stats": {
+      "def": 30
+    }
+  },
+  "The Wall Standing Tall": {
+    "effect": "Disables enemy's True Power; ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Thirst for Conquest": {
+    "effect": "ATK & DEF +15%",
+    "stats": {
+      "atk": 15,
+      "def": 15
+    }
+  },
+  "Tough as Nails": {
+    "effect": "DEF +20% and reduces damage received by 5%",
+    "stats": {
+      "def": 20,
+      "damageReduction": 5
+    }
+  },
+  "Tournament of Power": {
+    "effect": "Ki +3 and ATK & DEF +7%",
+    "stats": {
+      "ki": 3,
+      "atk": 7,
+      "def": 7
+    }
+  },
+  "Transform": {
+    "effect": "Ki +3 and DEF +10%",
+    "stats": {
+      "ki": 3,
+      "def": 10
+    }
+  },
+  "Turtle School": {
+    "effect": "Ki +2 and ATK & DEF +20%",
+    "stats": {
+      "ki": 2,
+      "atk": 20,
+      "def": 20
+    }
+  },
+  "Twin Terrors": {
+    "effect": "Ki +2 and ATK, DEF & chance of evading enemy's attack (including Super Attack) +5%",
+    "stats": {
+      "ki": 2,
+      "atk": 5,
+      "def": 5,
+      "evasion": 5
+    }
+  },
+  "Ultimate Lifeform": {
+    "effect": "Ki +2, recovers 3% HP and ATK & DEF +10%",
+    "stats": {
+      "ki": 2,
+      "atk": 10,
+      "def": 10,
+      "recovery": 3
+    }
+  },
+  "Unbreakable Bond": {
+    "effect": "Ki +2 and DEF +20%",
+    "stats": {
+      "ki": 2,
+      "def": 20
+    }
+  },
+  "Universe’s Most Malevolent": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Warrior Gods": {
+    "effect": "ATK +10%; plus an additional ATK +5% when performing a Super Attack",
+    "stats": {
+      "atk": 15
+    }
+  },
+  "Warriors of Universe 6 ": {
+    "effect": "Ki +2 and ATK & DEF +6%",
+    "stats": {
+      "ki": 2,
+      "atk": 6,
+      "def": 6
+    }
+  },
+  "World Tournament Champion": {
+    "effect": "Ki +2 and DEF +10%",
+    "stats": {
+      "ki": 2,
+      "def": 10
+    }
+  },
+  "World Tournament Reborn": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  },
+  "Xenoverse": {
+    "effect": "ATK +20% and DEF +10%",
+    "stats": {
+      "atk": 20,
+      "def": 10
+    }
+  },
+  "Z Fighters": {
+    "effect": "ATK +20%",
+    "stats": {
+      "atk": 20
+    }
+  }
+}

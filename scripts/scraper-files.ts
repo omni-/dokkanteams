@@ -3,10 +3,12 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RecordedObtain } from '../src/core/dataset.ts';
+import type { LinkSkill } from '../src/core/types.ts';
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const scraperDirectory = resolve(root, '../DokkanWebScraper');
 export const obtainmentPath = join(root, 'data', 'obtainment.json');
+export const linksPath = join(root, 'data', 'links.json');
 
 /** The newest yyyyMMddDokkanCharacterData.json in the scraper's data folder. */
 export function newestScrape(directory = join(scraperDirectory, 'data')): string {
@@ -25,4 +27,10 @@ export function newestScrape(directory = join(scraperDirectory, 'data')): string
 export function readObtainment(): Record<string, RecordedObtain> {
   if (!existsSync(obtainmentPath)) return {};
   return JSON.parse(readFileSync(obtainmentPath, 'utf8')) as Record<string, RecordedObtain>;
+}
+
+/** Link name → what it does, as recorded by `npm run links`. */
+export function readLinks(): Record<string, LinkSkill> {
+  if (!existsSync(linksPath)) return {};
+  return JSON.parse(readFileSync(linksPath, 'utf8')) as Record<string, LinkSkill>;
 }

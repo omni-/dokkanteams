@@ -12,6 +12,7 @@ import {
   fieldableUnits,
   filterByCategory,
   isInTeam,
+  linkSkills,
   removeFromTeam,
   selectUnit,
   selectedUnit,
@@ -56,6 +57,11 @@ function linkTooltip(other: Unit) {
   if (!unit.value) return titledName(other);
   const links = sharedLinks(unit.value, other);
   return `${titledName(other)}\n${links.length} shared: ${links.join(', ')}`;
+}
+
+function linkTitle(link: string) {
+  const effect = linkSkills.value[link]?.effect;
+  return effect ? `${link}\n${effect} (Lv 10)` : link;
 }
 
 function toggleTeam() {
@@ -163,7 +169,7 @@ function toggleTeam() {
         <section class="block">
           <h3>Links</h3>
           <div v-if="unit.links.length" class="plates">
-            <span v-for="link in unit.links" :key="link" class="link-plate">{{ link }}</span>
+            <span v-for="link in unit.links" :key="link" class="link-plate" :title="linkTitle(link)">{{ link }}</span>
           </div>
           <p v-else class="muted small">None</p>
         </section>
@@ -224,22 +230,25 @@ function toggleTeam() {
 
       <template v-else>
         <p v-if="leaders.length === 0" class="empty">No leader skill without conditions boosts this unit.</p>
-        <template v-else>
+        <section v-for="group in leaders" :key="group.boost" class="block">
+          <h3>
+            +{{ group.boost }}%
+            <span class="aside">{{ group.units.length }} {{ group.units.length === 1 ? 'leader' : 'leaders' }}, most shared links first</span>
+          </h3>
           <div class="tile-grid">
             <UnitTile
-              v-for="entry in leaders"
-              :key="entry.leader.id"
-              :unit="entry.leader"
+              v-for="entry in group.units"
+              :key="entry.unit.id"
+              :unit="entry.unit"
               small
-              :label="`${entry.boost}%`"
-              :tooltip="`${titledName(entry.leader)}\n+${entry.boost}%, ${entry.sharedLinks} shared links`"
-              :favorite="favorites.has(entry.leader.id)"
+              :label="`${entry.sharedLinks} links`"
+              :tooltip="linkTooltip(entry.unit)"
+              :favorite="favorites.has(entry.unit.id)"
               :origin="LIST_ORIGIN"
               @pick="selectUnit"
             />
           </div>
-          <p class="muted small">Top 20 by boost, then by shared links.</p>
-        </template>
+        </section>
       </template>
     </div>
   </section>

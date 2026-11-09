@@ -1,6 +1,6 @@
 import { computed, reactive, ref, shallowRef, watch } from 'vue';
-import { bestRotations, layoutOf, planFromLayout, restoreRotationLayout, swapInLayout } from '../core/analysis.ts';
-import type { RotationLayout, RotationPlan } from '../core/analysis.ts';
+import { bestRotations, fitLayout, moveInLayout, restoreRotationLayout, rotationPlan } from '../core/analysis.ts';
+import type { RotationLayout, RotationPlan, RotationSpot } from '../core/analysis.ts';
 import {
   addToBattlefield,
   clearBattlefieldTeam,
@@ -35,6 +35,7 @@ export const dataset = shallowRef<Dataset | null>(null);
 export const loadError = ref<string | null>(null);
 
 export const units = computed(() => dataset.value?.units ?? []);
+export const linkSkills = computed(() => dataset.value?.links ?? {});
 export const unitsById = computed(() => new Map(units.value.map(unit => [unit.id, unit])));
 export const fieldableUnits = computed(() => units.value.filter(unit => unit.formOf == null));
 export const allCategories = computed(() =>
@@ -68,12 +69,13 @@ export const teamIds = ref<number[]>([]);
 export const team = computed(() =>
   teamIds.value.map(id => unitsById.value.get(id)).filter((unit): unit is Unit => unit != null),
 );
-// Rotations the viewer rearranged. They only apply while the team has exactly the same members.
-const rotationLayout = ref<RotationLayout | null>(null);
-const customRotations = computed(() => (rotationLayout.value ? planFromLayout(rotationLayout.value, team.value) : null));
-export const rotationsRearranged = computed(() => customRotations.value != null);
-/** The team's rotations: the viewer's own arrangement, or else the best one. */
-export const rotations = computed<RotationPlan | null>(() => customRotations.value ?? bestRotations(team.value));
+// Kept in line with the team as members come and go (see fitLayout), so nobody moves unless the viewer moves them.
+const rotationLayout = ref<RotationLayout>(fitLayout(null, []));
+const fittedLayout = computed(() => fitLayout(rotationLayout.value, teamIds.value));
+/** The team's rotations as the viewer arranged them. Null while the team is empty. */
+export const rotations = computed<RotationPlan | null>(() =>
+  team.value.length ? rotationPlan(fittedLayout.value, team.value) : null,
+);
 export const battlefield = ref<Battlefield>(emptyBattlefield());
 export const activeBattlefieldTeam = ref(0);
 export const usedInBattlefield = computed(() => usedUnitIds(battlefield.value));
@@ -100,10 +102,11 @@ function restoreSavedLists() {
   favorites.value = new Set(keepKnown(loadSaved('favorites')));
   teamIds.value = [...new Set(keepKnown(loadSaved('team')))];
   battlefield.value = restoreBattlefield(loadSaved('battlefield'), known);
-  rotationLayout.value = restoreRotationLayout(loadSaved('rotations'));
+  rotationLayout.value = fitLayout(restoreRotationLayout(loadSaved('rotations')), teamIds.value);
 
   watch(favorites, value => save('favorites', [...value]), { deep: true });
   watch(teamIds, value => save('team', value), { deep: true });
+  watch(teamIds, value => (rotationLayout.value = fitLayout(rotationLayout.value, value)));
   watch(rotationLayout, value => save('rotations', value));
   watch(battlefield, value => save('battlefield', value), { deep: true });
 }
@@ -148,14 +151,14 @@ export function clearTeam(): void {
   teamIds.value = [];
 }
 
-/** Swaps two team members' places in the rotations. */
-export function swapInRotations(a: Unit, b: Unit): void {
-  if (!rotations.value || a.id === b.id) return;
-  rotationLayout.value = swapInLayout(layoutOf(rotations.value), a.id, b.id);
+/** Moves a team member to a spot in the rotations, swapping with whoever is there. */
+export function moveInRotations(unit: Unit, spot: RotationSpot): void {
+  rotationLayout.value = moveInLayout(fittedLayout.value, unit.id, spot);
 }
 
-export function resetRotations(): void {
-  rotationLayout.value = null;
+/** Rearranges the rotations so the pairs share as many links as possible. */
+export function arrangeBestRotations(): void {
+  rotationLayout.value = fitLayout(bestRotations(team.value), teamIds.value);
 }
 
 export function addToActiveBattlefieldTeam(unit: Unit): AddResult {
@@ -187,7 +190,7 @@ export function dropPreview(unit: Unit, origin: DragOrigin, target: DropTarget |
   if (target?.kind === 'rotation') {
     if (unit.formOf != null) return 'none';
     if (!isInTeam(unit)) return 'add';
-    return target.unitId != null && target.unitId !== unit.id ? 'move' : 'none';
+    return target.spot && moveInLayout(fittedLayout.value, unit.id, target.spot) !== fittedLayout.value ? 'move' : 'none';
   }
   if (target?.kind === 'battlefield') {
     if (unit.formOf != null) return 'none';
@@ -203,10 +206,9 @@ export function dropUnit(unit: Unit, origin: DragOrigin, target: DropTarget | nu
   }
 
   if (target?.kind === 'rotation') {
-    // Units from outside the team join it; members swap places with the one they're dropped on.
-    const other = target.unitId == null ? undefined : unitsById.value.get(target.unitId);
+    // A unit from outside joins the team first, then takes the spot it was dropped on like a member would.
     if (!isInTeam(unit)) addToTeam(unit);
-    else if (other) swapInRotations(unit, other);
+    if (isInTeam(unit) && target.spot) moveInRotations(unit, target.spot);
     return;
   }
 

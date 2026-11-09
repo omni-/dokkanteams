@@ -1,12 +1,13 @@
 // Builds public/data/units.json and public/images/thumbs from a DokkanWebScraper character file.
 //   npm run data -- [path/to/yyyyMMddDokkanCharacterData.json]
 // With no path it uses the newest dated file in ../DokkanWebScraper/data. Premium/F2P comes from
-// data/obtainment.json, which `npm run obtainment` keeps up to date.
+// data/obtainment.json and link effects from data/links.json, which `npm run obtainment` and
+// `npm run links` keep up to date.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { buildDataset, resolveObtain } from '../src/core/dataset.ts';
 import type { ScrapedCharacter } from '../src/core/dataset.ts';
-import { newestScrape, readObtainment, root } from './scraper-files.ts';
+import { newestScrape, readLinks, readObtainment, root } from './scraper-files.ts';
 
 const inputPath = process.argv[2] ? resolve(process.argv[2]) : newestScrape();
 const thumbSource = join(dirname(inputPath), 'images', 'thumbs');
@@ -19,8 +20,14 @@ if (!Array.isArray(characters) || characters.length === 0) {
 }
 
 const obtain = resolveObtain(characters, readObtainment());
-const { dataset, skipped } = buildDataset(characters, basename(inputPath), { obtain });
+const links = readLinks();
+const { dataset, skipped } = buildDataset(characters, basename(inputPath), { obtain, links });
 for (const reason of skipped) console.warn(`Skipped ${reason}`);
+
+const unknownLinks = [...new Set(dataset.units.flatMap(unit => unit.links))].filter(link => !links[link]).sort();
+if (unknownLinks.length > 0) {
+  console.warn(`${unknownLinks.length} links have no effects in data/links.json; run npm run links first: ${unknownLinks.join(', ')}`);
+}
 
 const unclassified = dataset.units.filter(unit => unit.formOf == null && unit.obtain == null).map(unit => unit.id);
 if (unclassified.length > 0) {

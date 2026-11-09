@@ -92,8 +92,20 @@ export interface Unit {
   forms: number[];
 }
 
+/** Stats a link skill gives at level 10. Percentages, except Ki. */
+export type LinkStat = 'ki' | 'atk' | 'def' | 'crit' | 'evasion' | 'damageReduction' | 'recovery' | 'enemyDefDown';
+
+export interface LinkSkill {
+  /** What the link does at level 10, in the game's words. */
+  effect: string;
+  /** Includes effects with conditions, such as "when performing a Super Attack". */
+  stats: Partial<Record<LinkStat, number>>;
+}
+
 export interface Dataset {
   generatedAt: string;
   source: string;
   units: Unit[];
+  /** Link skills by name. */
+  links: Record<string, LinkSkill>;
 }

@@ -7,10 +7,12 @@ tools from dokkantools.com, which is no longer updated.
   and sort by leader boost, release date, cost, HP, ATK or DEF. As in the game, the release sort counts a card's
   EZA and Super EZA dates, and transformed forms are listed right after their base card.
 - **Unit details**: stats, base or EZA skills, transformations, linking partners, the units it boosts as
-  leader, and the best leaders for it. On wide screens the details open over the unit list.
-- **Team tools**: a shared-links graph, rotation pairs (the best ones, which you can rearrange by dragging one unit
-  onto another), leaders that boost every member, and what each member would do as leader. Drag units into the
-  team, between members to reorder, or out to remove them.
+  leader, and every leader that boosts it, grouped by boost. Hover a link to see what it does at level 10. On wide
+  screens the details open over the unit list.
+- **Team tools**: a shared-links graph with what each link does, rotation pairs with the stats their shared links
+  add up to, leaders that boost every member, and what each member would do as leader. New members take the first
+  open rotation spot and nobody moves unless you drag them; **Best rotations** pairs up the most shared links.
+  Drag units into the team, between members to reorder, or out to remove them.
 - **Battlefield**: plan 16 teams where each card is used once, with leader and friend boosts marked on every card.
   As in the game, an alt art can share a team with its original there.
   Drag units onto any slot, between slots and teams to move or swap them, or off the board to remove them.
@@ -34,8 +36,8 @@ npm run build      # type check + production build into dist/
 
 ## Updating the character data
 
-Data comes from [DokkanWebScraper](../DokkanWebScraper), which reads DokkanStats, and premium or F2P comes
-from Dokkan Info.
+Data comes from [DokkanWebScraper](../DokkanWebScraper), which reads DokkanStats, premium or F2P comes
+from Dokkan Info, and link effects come from DokkanStats' link list.
 
 ```bash
 # in ../DokkanWebScraper
@@ -43,6 +45,9 @@ npm run run:dokkanstats
 
 # here: look up premium/F2P for cards that aren't in data/obtainment.json yet (needs curl)
 npm run obtainment
+
+# here: refresh what each link does, in data/links.json
+npm run links
 
 # here: reads the newest yyyyMMddDokkanCharacterData.json, or pass a path
 npm run data
@@ -56,6 +61,10 @@ Both are committed, so the deploy doesn't need to scrape. Commit them and push t
 committed, so later runs only look up new cards (about a second each). Cards on a summon banner are premium.
 Dokkan Info lists no banner for some cards; alt-art cards take their original's value, and the rest count as
 F2P. Those cards are checked again on every run, and `--all` refreshes everything.
+
+`npm run links` saves every link's level 10 effect and stats in `data/links.json`, which is committed too. Run it
+when a new link appears; `npm run data` warns about links it has no effects for. Link stat totals count effects
+with conditions (such as "when performing a Super Attack") as if they were active.
 
 DokkanStats rate-limits busy scrapes, and a card that still fails after its retries is skipped with only a
 warning. If the scrape log has any `Skipping DokkanStats` lines, run it again more gently:

@@ -1,4 +1,5 @@
 import { reactive } from 'vue';
+import type { RotationSpot } from '../core/analysis.ts';
 import type { Unit } from '../core/types.ts';
 
 /** Where a dragged unit came from. */
@@ -10,11 +11,11 @@ export type DragOrigin =
 
 /**
  * What the pointer is over. Elements opt in with `data-drop` (plus `data-member`, `data-team`, `data-slot`,
- * `data-rotation-unit`).
+ * `data-rotation-unit`, `data-rotation-slot`, `data-rotation-floaters`).
  */
 export type DropTarget =
   | { kind: 'team'; beforeId: number | null }
-  | { kind: 'rotation'; unitId: number | null }
+  | { kind: 'rotation'; spot: RotationSpot | null }
   | { kind: 'battlefield'; team: number; slot: number | null };
 
 type DropHandler = (unit: Unit, origin: DragOrigin, target: DropTarget | null) => void;
@@ -161,8 +162,8 @@ function findTarget(x: number, y: number): DropTarget | null {
   }
 
   if (zone.dataset.drop === 'rotation') {
-    const tile = element.closest<HTMLElement>('[data-rotation-unit]');
-    return { kind: 'rotation', unitId: tile && zone.contains(tile) ? Number(tile.dataset.rotationUnit) : null };
+    const spot = element.closest<HTMLElement>('[data-rotation-unit], [data-rotation-slot], [data-rotation-floaters]');
+    return { kind: 'rotation', spot: spot && zone.contains(spot) ? rotationSpot(spot) : null };
   }
 
   if (zone.dataset.drop === 'battlefield') {
@@ -175,6 +176,16 @@ function findTarget(x: number, y: number): DropTarget | null {
   }
 
   return null;
+}
+
+function rotationSpot(element: HTMLElement): RotationSpot {
+  const { rotationUnit, rotationSlot } = element.dataset;
+  if (rotationUnit) return { kind: 'unit', unitId: Number(rotationUnit) };
+  if (rotationSlot) {
+    const [rotation, position] = rotationSlot.split('-').map(Number);
+    return { kind: 'slot', rotation, position };
+  }
+  return { kind: 'floaters' };
 }
 
 // Scroll lists marked with data-drag-scroll when the pointer sits near their top or bottom edge.
