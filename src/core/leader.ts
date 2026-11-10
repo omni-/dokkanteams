@@ -35,7 +35,7 @@ export function parseLeaderSkill(text: string | null | undefined): ParsedLeader 
   return clauses.length > 0 ? { clauses } : null;
 }
 
-/** The boost a leader gives a unit, as the average of its HP, ATK and DEF boosts. 0 when it doesn't apply. */
+/** The highest HP, ATK or DEF boost a leader gives a unit. 0 when it doesn't apply. */
 export function leaderBoost(leader: ParsedLeader | null, unit: LeaderTraits): number {
   if (!leader) return 0;
 
@@ -44,25 +44,17 @@ export function leaderBoost(leader: ParsedLeader | null, unit: LeaderTraits): nu
     if (!matchesAny(clause.targets, unit)) continue;
     if (clause.excluded && matchesAny(clause.excluded, unit)) continue;
 
-    let value = averageBoost(clause.boost);
-    for (const bonus of clause.bonuses) {
-      if (matchesAny(bonus.targets, unit)) value += averageBoost(bonus.boost);
-    }
-    best = Math.max(best, value);
+    best = Math.max(best, peakStatBoost(clause, unit));
   }
 
-  return Math.round(best);
+  return best;
 }
 
 /** The highest boost the leader can give anyone, assuming they qualify for every bonus. */
 export function maxLeaderBoost(leader: ParsedLeader | null): number {
   if (!leader) return 0;
 
-  const values = leader.clauses.map(clause =>
-    clause.bonuses.reduce((total, bonus) => total + averageBoost(bonus.boost), averageBoost(clause.boost)),
-  );
-
-  return Math.round(Math.max(0, ...values));
+  return Math.max(0, ...leader.clauses.map(clause => peakStatBoost(clause)));
 }
 
 export function matchesAny(targets: readonly LeaderTarget[], unit: LeaderTraits): boolean {
@@ -78,8 +70,15 @@ export function matchesAny(targets: readonly LeaderTarget[], unit: LeaderTraits)
   });
 }
 
-function averageBoost(boost: StatBoost) {
-  return (boost.hp + boost.atk + boost.def) / 3;
+function peakStatBoost(clause: LeaderClause, unit?: LeaderTraits): number {
+  let { hp, atk, def } = clause.boost;
+  for (const bonus of clause.bonuses) {
+    if (unit && !matchesAny(bonus.targets, unit)) continue;
+    hp += bonus.boost.hp;
+    atk += bonus.boost.atk;
+    def += bonus.boost.def;
+  }
+  return Math.max(hp, atk, def);
 }
 
 function normalize(text: string) {

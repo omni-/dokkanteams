@@ -82,7 +82,7 @@ export interface Unit {
   transformationCondition: string | null;
   /** Parsed from the EZA leader skill when the unit has one. */
   leader: ParsedLeader | null;
-  /** The highest average HP/ATK/DEF boost this unit's leader skill can give. */
+  /** The highest HP, ATK or DEF boost this unit's leader skill can give. */
   maxBoost: number;
   /** How many fieldable units the leader skill boosts. Used to break ties when sorting by leader. */
   leaderReach: number;

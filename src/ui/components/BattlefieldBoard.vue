@@ -47,7 +47,7 @@ const target = computed(() => (drag.unit && drag.target?.kind === 'battlefield' 
 function slotTitle(slot: Slot, leader1: Unit | null, leader2: Unit | null) {
   if (!slot.unit) return '';
   const describe = (leader: Unit | null, boost: number, label: string) =>
-    leader ? `${label} (${titledName(leader)}): ${boost > 0 ? `+${boost}%` : 'no boost'}` : `${label}: empty`;
+    leader ? `${label} (${titledName(leader)}): ${boost > 0 ? `up to +${boost}%` : 'no boost'}` : `${label}: empty`;
   return `${titledName(slot.unit)}\n${describe(leader1, slot.boost1, 'Leader')}\n${describe(leader2, slot.boost2, 'Friend')}`;
 }
 

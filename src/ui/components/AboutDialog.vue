@@ -28,7 +28,7 @@ defineExpose({ open: () => dialog.value?.showModal() });
       </p>
       <h3>How leader boosts are counted</h3>
       <p>
-        Boosts are the average of a leader skill's HP, ATK and DEF bonuses, plus any “plus an additional…” bonus the
+        The displayed percentage is the largest HP, ATK or DEF boost after applying any additional bonuses the
         unit qualifies for. Category, Type, Class and all-Type leaders count. Leader skills with conditions (HP
         thresholds, team requirements, per-Ki-Sphere boosts) are left out. EZA leader skills are used when a unit has one.
       </p>

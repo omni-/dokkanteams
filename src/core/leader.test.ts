@@ -122,13 +122,23 @@ describe('leaderBoost', () => {
     + 'plus an additional HP, ATK & DEF +50% for characters who also belong to the "Time Travelers" Category',
   );
 
-  it('averages HP, ATK and DEF and adds a matching bonus', () => {
+  it('reports the highest stat boost with any matching bonus', () => {
     const plain = unit({ categories: ['Demonic Power'] });
     const withBonus = unit({ categories: ['Demonic Power', 'Time Travelers'] });
 
     const results = [leaderBoost(bonusLeader, plain), leaderBoost(bonusLeader, withBonus)];
 
-    expect(results).toEqual([180, 230]);
+    expect(results).toEqual([200, 250]);
+  });
+
+  it('adds bonuses to their own stats before picking the highest boost', () => {
+    const leader = parseLeaderSkill(
+      'All Types Ki +3, HP +200% and ATK & DEF +170%, '
+      + 'plus an additional ATK +60% for characters who are also Super Class',
+    );
+
+    expect(leaderBoost(leader, unit())).toBe(230);
+    expect(maxLeaderBoost(leader)).toBe(230);
   });
 
   it('gives nothing to units outside the targets, even if they match the bonus', () => {
@@ -156,6 +166,6 @@ describe('leaderBoost', () => {
   it('reports the best possible boost', () => {
     const result = maxLeaderBoost(bonusLeader);
 
-    expect(result).toBe(230);
+    expect(result).toBe(250);
   });
 });

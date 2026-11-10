@@ -75,8 +75,8 @@ warning. If the scrape log has any `Skipping DokkanStats` lines, run it again mo
 `src/core/leader.ts` turns leader skill text into targets and boosts. It reads Category, Type, Class and
 all-Type leaders, the "plus an additional…" bonus, `; or` clauses and `(… characters excluded)` notes. Anything
 with a condition (HP thresholds, team requirements, per-Ki-Sphere boosts, enemy debuffs) is skipped rather than
-guessed at, so those leaders show no boost. A unit's boost is the average of its HP, ATK and DEF bonuses, plus
-any bonus it qualifies for. The EZA leader skill is used when a unit has one.
+guessed at, so those leaders show no boost. A unit's boost is the largest of its HP, ATK and DEF boosts after
+applying any additional bonuses it qualifies for. The EZA leader skill is used when a unit has one.
 
 ## Layout
 

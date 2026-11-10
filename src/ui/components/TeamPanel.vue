@@ -215,7 +215,7 @@ function changeMinimum(delta: number) {
               :unit="entry.leader"
               small
               :label="`${entry.boost}%`"
-              :tooltip="`${titledName(entry.leader)}\nAt least +${entry.boost}% to everyone, ${entry.sharedLinks} shared links in total`"
+              :tooltip="`${titledName(entry.leader)}\nEveryone qualifies for the ${entry.boost}% tier or higher\n${entry.sharedLinks} shared links in total`"
               :favorite="favorites.has(entry.leader.id)"
               :origin="LIST_ORIGIN"
               @pick="selectUnit"
