@@ -1,4 +1,6 @@
-import { canShareTeam, isFieldable } from './analysis.ts';
+import { isFieldable } from './analysis.ts';
+import { titledName } from './browse.ts';
+import { leaderBoost } from './leader.ts';
 import type { Unit } from './types.ts';
 
 export const BATTLEFIELD_TEAM_COUNT = 16;
@@ -15,7 +17,7 @@ export type Battlefield = BattlefieldTeam[];
 
 export type AddResult =
   | { ok: true; battlefield: Battlefield }
-  | { ok: false; reason: 'used' | 'full' | 'duplicate' | 'form' | 'no-team' };
+  | { ok: false; reason: 'used' | 'full' | 'form' | 'no-team' };
 
 export function emptyBattlefield(): Battlefield {
   return Array.from({ length: BATTLEFIELD_TEAM_COUNT }, emptyTeam);
@@ -35,22 +37,14 @@ export function usedUnitIds(battlefield: Battlefield): Set<number> {
 
 /**
  * Puts `unit` in the next open slot of team `teamIndex`: first leader, second leader, then followers.
- * Each card can only be used once across the Battlefield, and a team can't hold two cards of the same character,
- * except alt arts.
+ * Each card can only be used once across the Battlefield. Unlike normal teams, a team can hold several cards of
+ * the same character, as Ultimate Clash allows.
  */
-export function addToBattlefield(
-  battlefield: Battlefield,
-  teamIndex: number,
-  unit: Unit,
-  unitsById: ReadonlyMap<number, Unit>,
-): AddResult {
+export function addToBattlefield(battlefield: Battlefield, teamIndex: number, unit: Unit): AddResult {
   const team = battlefield[teamIndex];
   if (!team) return { ok: false, reason: 'no-team' };
   if (!isFieldable(unit)) return { ok: false, reason: 'form' };
   if (usedUnitIds(battlefield).has(unit.id)) return { ok: false, reason: 'used' };
-
-  const members = teamMemberIds(team).map(id => unitsById.get(id)).filter((member): member is Unit => member != null);
-  if (members.some(member => !canShareBattlefieldTeam(member, unit))) return { ok: false, reason: 'duplicate' };
 
   let updated: BattlefieldTeam;
   if (team.leader1 == null) updated = { ...team, leader1: unit.id };
@@ -82,12 +76,7 @@ export function locateUnit(battlefield: Battlefield, unitId: number): SlotRef | 
  * A unit already on the Battlefield moves, swapping places with whoever held the target slot.
  * A unit from outside the Battlefield replaces the target slot's occupant, which goes back to the pool.
  */
-export function placeOnBattlefield(
-  battlefield: Battlefield,
-  target: { team: number; slot: number | null },
-  unit: Unit,
-  unitsById: ReadonlyMap<number, Unit>,
-): AddResult {
+export function placeOnBattlefield(battlefield: Battlefield, target: { team: number; slot: number | null }, unit: Unit): AddResult {
   if (!battlefield[target.team]) return { ok: false, reason: 'no-team' };
   if (!isFieldable(unit)) return { ok: false, reason: 'form' };
 
@@ -95,7 +84,7 @@ export function placeOnBattlefield(
   if (target.slot == null) {
     if (from?.team === target.team) return { ok: true, battlefield };
     const without = from ? removeFromBattlefield(battlefield, unit.id) : battlefield;
-    return addToBattlefield(without, target.team, unit, unitsById);
+    return addToBattlefield(without, target.team, unit);
   }
   if (target.slot < 0 || target.slot >= SLOTS_PER_TEAM) return { ok: false, reason: 'no-team' };
 
@@ -104,10 +93,6 @@ export function placeOnBattlefield(
   if (occupant === unit.id) return { ok: true, battlefield };
   if (from) slots[from.team][from.slot] = occupant;
   slots[target.team][target.slot] = unit.id;
-
-  const touched = from ? [target.team, from.team] : [target.team];
-  if (touched.some(team => hasSameCharacterTwice(slots[team], unitsById))) return { ok: false, reason: 'duplicate' };
-
   return { ok: true, battlefield: slots.map(fromSlots) };
 }
 
@@ -125,17 +110,14 @@ function fromSlots(slots: Array<number | null>): BattlefieldTeam {
   };
 }
 
-function hasSameCharacterTwice(ids: Array<number | null>, unitsById: ReadonlyMap<number, Unit>): boolean {
-  const members = ids
-    .map(id => (id == null ? undefined : unitsById.get(id)))
-    .filter((member): member is Unit => member != null);
-  return members.some((member, index) => members.slice(index + 1).some(other => !canShareBattlefieldTeam(member, other)));
-}
-
-// Unlike normal teams, the game lets a Battlefield team hold an alt art alongside its original.
-// Alt arts share their original's title and name.
-function canShareBattlefieldTeam(a: Unit, b: Unit): boolean {
-  return canShareTeam(a, b) || (a.title === b.title && a.name === b.name);
+/** Hover text naming `unit` and how much a team's leader and friend boost it. */
+export function describeTeamBoosts(unit: Unit, leader: Unit | null, friend: Unit | null): string {
+  const line = (role: string, by: Unit | null) => {
+    if (!by) return `${role}: empty`;
+    const boost = leaderBoost(by.leader, unit);
+    return `${role} (${titledName(by)}): ${boost > 0 ? `up to +${boost}%` : 'no boost'}`;
+  };
+  return `${titledName(unit)}\n${line('Leader', leader)}\n${line('Friend', friend)}`;
 }
 
 export function removeFromBattlefield(battlefield: Battlefield, unitId: number): Battlefield {

@@ -16,7 +16,10 @@ const about = ref<InstanceType<typeof AboutDialog> | null>(null);
 // Phones show one panel at a time; wider screens show them side by side.
 const mobilePanel = ref<MobilePanel>('browse');
 
-watch(page, () => (mobilePanel.value = 'browse'));
+watch(page, () => {
+  mobilePanel.value = 'browse';
+  closeDetail();
+});
 
 function onKeyDown(event: KeyboardEvent) {
   if (event.key !== 'Escape' || !detailOpen.value || drag.unit || document.querySelector('dialog[open]')) return;
@@ -49,18 +52,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown));
   </main>
   <main v-else-if="!dataset" class="message muted">Loading characters…</main>
 
-  <main v-else class="layout" :class="[page, `show-${mobilePanel}`, { 'detail-open': detailOpen && page === 'team' }]">
+  <main v-else class="layout" :class="[page, `show-${mobilePanel}`, { 'detail-open': detailOpen }]">
     <UnitBrowser :mode="page" class="area-browse" @picked="mobilePanel = 'detail'" />
-    <template v-if="page === 'team'">
-      <UnitDetail class="area-detail" :class="{ closed: !detailOpen }" />
-      <TeamPanel class="area-team" />
-    </template>
-    <BattlefieldBoard v-else class="area-team" />
+    <UnitDetail class="area-detail" :class="{ closed: !detailOpen }" />
+    <TeamPanel v-if="page === 'team'" class="area-team" />
+    <BattlefieldBoard v-else class="area-team" @picked="mobilePanel = 'detail'" />
   </main>
 
   <nav v-if="dataset" class="mobile-nav" aria-label="Panels">
     <button type="button" :class="{ active: mobilePanel === 'browse' }" @click="mobilePanel = 'browse'">Units</button>
-    <button v-if="page === 'team'" type="button" :class="{ active: mobilePanel === 'detail' }" @click="mobilePanel = 'detail'">Details</button>
+    <button type="button" :class="{ active: mobilePanel === 'detail' }" @click="mobilePanel = 'detail'">Details</button>
     <button type="button" :class="{ active: mobilePanel === 'team' }" @click="mobilePanel = 'team'">
       <template v-if="page === 'team'">Team ({{ team.length }})</template>
       <template v-else>Teams ({{ usedInBattlefield.size }})</template>

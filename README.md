@@ -13,9 +13,11 @@ tools from dokkantools.com, which is no longer updated.
   add up to, leaders that boost every member, and what each member would do as leader. New members take the first
   open rotation spot and nobody moves unless you drag them; **Best rotations** pairs up the most shared links.
   Drag units into the team, between members to reorder, or out to remove them.
-- **Battlefield**: plan 16 teams where each card is used once, with leader and friend boosts marked on every card.
-  As in the game, an alt art can share a team with its original there.
-  Drag units onto any slot, between slots and teams to move or swap them, or off the board to remove them.
+- **Battlefield**: plan 16 Ultimate Clash teams where each card is used once, with leader and friend boosts marked
+  on every card. **Boosts** marks them on the unit list too, for the selected team. As in Ultimate Clash, a team can
+  hold several cards of the same character. Tapping a unit adds it to the selected team; turn off **Quick add** to
+  open its details instead. Drag units onto any slot, between slots and teams to move or swap them, or off the board
+  to remove them.
 
 Cards use the game's own frames, type and rarity icons and LR lightning, taken from DokkanDaily. Passives use the
 game's icons for effects that activate once or last for the rest of battle, taken from DokkanStats.

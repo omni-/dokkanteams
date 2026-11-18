@@ -6,17 +6,24 @@ import type { Unit } from '../../core/types.ts';
 import { art } from '../art.ts';
 import type { DragOrigin } from '../drag.ts';
 import {
+  FAILURE_MESSAGES,
+  activeBattlefieldTeam,
+  addToActiveBattlefieldTeam,
   addToTeam,
+  battlefieldTeamOf,
   closeDetail,
   favorites,
   fieldableUnits,
   filterByCategory,
   isInTeam,
   linkSkills,
+  page,
+  removeBattlefieldUnit,
   removeFromTeam,
   selectUnit,
   selectedUnit,
   settings,
+  showToast,
   skillsFor,
   toggleFavorite,
   units,
@@ -64,10 +71,31 @@ function linkTitle(link: string) {
   return effect ? `${link}\n${effect} (Lv 10)` : link;
 }
 
+// On the Battlefield page the button adds to the selected Battlefield team rather than the team.
+const battlefieldTeam = computed(() => (unit.value && page.value === 'battlefield' ? battlefieldTeamOf(unit.value) : null));
+const teamButton = computed(() => {
+  if (!unit.value) return { placed: false, label: '' };
+  if (page.value === 'team') {
+    const placed = isInTeam(unit.value);
+    return { placed, label: placed ? '✓ In team' : '+ Add to team' };
+  }
+  const placedIn = battlefieldTeam.value;
+  return placedIn != null
+    ? { placed: true, label: `✓ In Team ${placedIn + 1}` }
+    : { placed: false, label: `+ Add to Team ${activeBattlefieldTeam.value + 1}` };
+});
+
 function toggleTeam() {
   if (!unit.value) return;
-  if (isInTeam(unit.value)) removeFromTeam(unit.value);
-  else addToTeam(unit.value);
+  if (page.value === 'team') {
+    if (isInTeam(unit.value)) removeFromTeam(unit.value);
+    else addToTeam(unit.value);
+  } else if (battlefieldTeam.value != null) {
+    removeBattlefieldUnit(unit.value.id);
+  } else {
+    const result = addToActiveBattlefieldTeam(unit.value);
+    if (!result.ok) showToast(FAILURE_MESSAGES[result.reason]);
+  }
 }
 </script>
 
@@ -87,9 +115,13 @@ function toggleTeam() {
           <span v-if="unit.formOf != null">Transformed form</span>
         </p>
         <div class="row actions">
-          <button v-if="unit.formOf == null" type="button" :class="{ active: isInTeam(unit) }" @click="toggleTeam">
-            {{ isInTeam(unit) ? '✓ In team' : '+ Add to team' }}
-          </button>
+          <button
+            v-if="unit.formOf == null"
+            type="button"
+            :class="{ active: teamButton.placed }"
+            :title="teamButton.placed ? 'Click to take it off' : undefined"
+            @click="toggleTeam"
+          >{{ teamButton.label }}</button>
           <button
             type="button"
             class="favorite"

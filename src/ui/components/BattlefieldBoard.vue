@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { BATTLEFIELD_TEAM_COUNT, FOLLOWERS_PER_TEAM, SLOTS_PER_TEAM } from '../../core/battlefield.ts';
-import { titledName } from '../../core/browse.ts';
+import { BATTLEFIELD_TEAM_COUNT, FOLLOWERS_PER_TEAM, SLOTS_PER_TEAM, describeTeamBoosts } from '../../core/battlefield.ts';
 import { leaderBoost } from '../../core/leader.ts';
 import type { Unit } from '../../core/types.ts';
 import { drag } from '../drag.ts';
@@ -11,10 +10,15 @@ import {
   clearBattlefieldTeamAt,
   clearWholeBattlefield,
   removeBattlefieldUnit,
+  selectUnit,
+  settings,
   unitsById,
   usedInBattlefield,
 } from '../store.ts';
+import BoostBadges from './BoostBadges.vue';
 import UnitTile from './UnitTile.vue';
+
+const emit = defineEmits<{ picked: [unit: Unit] }>();
 
 interface Slot {
   role: string;
@@ -44,11 +48,14 @@ const teams = computed(() =>
 
 const target = computed(() => (drag.unit && drag.target?.kind === 'battlefield' ? drag.target : null));
 
-function slotTitle(slot: Slot, leader1: Unit | null, leader2: Unit | null) {
-  if (!slot.unit) return '';
-  const describe = (leader: Unit | null, boost: number, label: string) =>
-    leader ? `${label} (${titledName(leader)}): ${boost > 0 ? `up to +${boost}%` : 'no boost'}` : `${label}: empty`;
-  return `${titledName(slot.unit)}\n${describe(leader1, slot.boost1, 'Leader')}\n${describe(leader2, slot.boost2, 'Friend')}`;
+// With Quick add off, taps open details everywhere, so placed units come off by dragging or from their details.
+function tapPlaced(unit: Unit) {
+  if (settings.battlefieldQuickAdd) {
+    removeBattlefieldUnit(unit.id);
+    return;
+  }
+  selectUnit(unit);
+  emit('picked', unit);
 }
 
 function clearAll() {
@@ -66,7 +73,9 @@ function clearAll() {
       <button type="button" class="danger" :disabled="usedInBattlefield.size === 0" @click="clearAll">Clear all</button>
     </header>
     <p class="muted small help">
-      Tap a unit to add it to the selected team, or drag it onto any slot. Drag placed units to move them, or out to take them off.
+      <template v-if="settings.battlefieldQuickAdd">Tap a unit to add it to the selected team, or drag it onto any slot.</template>
+      <template v-else>Tap a unit to see its details, or drag it onto any slot.</template>
+      Drag placed units to move them, or out to take them off.
     </p>
 
     <div class="teams" data-drag-scroll>
@@ -96,13 +105,11 @@ function clearAll() {
               <UnitTile
                 :unit="slot.unit"
                 small
-                :tooltip="`${slotTitle(slot, team.leader1, team.leader2)}\nTap to take off`"
+                :tooltip="`${describeTeamBoosts(slot.unit, team.leader1, team.leader2)}\n${settings.battlefieldQuickAdd ? 'Tap to take off' : 'Tap for details'}`"
                 :origin="{ kind: 'battlefield', team: teamIndex, slot: slotIndex }"
-                @pick="removeBattlefieldUnit(slot.unit.id)"
+                @pick="tapPlaced"
               />
-              <span class="boosts" aria-hidden="true">
-                <span :class="{ on: slot.boost1 > 0 }">L</span><span :class="{ on: slot.boost2 > 0 }">F</span>
-              </span>
+              <BoostBadges class="boosts" :leader="slot.boost1 > 0" :friend="slot.boost2 > 0" />
             </template>
             <span v-else class="placeholder">{{ slot.role }}</span>
           </div>
@@ -166,20 +173,8 @@ h2 { margin: 0; font-size: 1.05rem; }
   position: absolute;
   left: 50%;
   bottom: 0;
-  display: flex;
-  gap: 2px;
   transform: translateX(-50%);
 }
-.boosts span {
-  padding: 0 3px;
-  border-radius: 3px;
-  background: var(--panel-3);
-  color: var(--muted);
-  font-size: 0.6rem;
-  font-weight: 700;
-  line-height: 1.35;
-}
-.boosts .on { background: var(--good); color: #fff; }
 
 @media (max-width: 420px) {
   .teams { grid-template-columns: 1fr; }

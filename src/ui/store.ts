@@ -5,6 +5,7 @@ import {
   addToBattlefield,
   clearBattlefieldTeam,
   emptyBattlefield,
+  locateUnit,
   placeOnBattlefield,
   removeFromBattlefield,
   restoreBattlefield,
@@ -24,7 +25,6 @@ type FailureReason = Exclude<AddResult, { ok: true }>['reason'];
 export const FAILURE_MESSAGES: Record<FailureReason, string> = {
   used: 'That card is already in another Battlefield team.',
   full: 'This team is full.',
-  duplicate: 'A card of that character is already in this team.',
   form: "Transformed forms can't be fielded on their own.",
   'no-team': 'Pick a team first.',
 };
@@ -52,6 +52,8 @@ export const settings = reactive({
   minimumLinks: 2,
   showLabel: true,
   quickAdd: false,
+  battlefieldQuickAdd: true,
+  showBoosts: true,
   maxBoostOnly: false,
   useEza: true,
   ...loadSaved<Record<string, unknown>>('settings'),
@@ -79,6 +81,12 @@ export const rotations = computed<RotationPlan | null>(() =>
 export const battlefield = ref<Battlefield>(emptyBattlefield());
 export const activeBattlefieldTeam = ref(0);
 export const usedInBattlefield = computed(() => usedUnitIds(battlefield.value));
+/** The leader and friend of the selected Battlefield team. */
+export const activeBattlefieldLeaders = computed(() => {
+  const team = battlefield.value[activeBattlefieldTeam.value];
+  const find = (id: number | null | undefined) => (id == null ? null : unitsById.value.get(id) ?? null);
+  return { leader: find(team?.leader1), friend: find(team?.leader2) };
+});
 
 export async function loadData(): Promise<void> {
   try {
@@ -162,9 +170,14 @@ export function arrangeBestRotations(): void {
 }
 
 export function addToActiveBattlefieldTeam(unit: Unit): AddResult {
-  const result = addToBattlefield(battlefield.value, activeBattlefieldTeam.value, unit, unitsById.value);
+  const result = addToBattlefield(battlefield.value, activeBattlefieldTeam.value, unit);
   if (result.ok) battlefield.value = result.battlefield;
   return result;
+}
+
+/** The index of the Battlefield team the unit is in, or null. */
+export function battlefieldTeamOf(unit: Unit): number | null {
+  return locateUnit(battlefield.value, unit.id)?.team ?? null;
 }
 
 export function removeBattlefieldUnit(unitId: number): void {
@@ -213,7 +226,7 @@ export function dropUnit(unit: Unit, origin: DragOrigin, target: DropTarget | nu
   }
 
   if (target?.kind === 'battlefield') {
-    const result = placeOnBattlefield(battlefield.value, target, unit, unitsById.value);
+    const result = placeOnBattlefield(battlefield.value, target, unit);
     if (!result.ok) {
       showToast(FAILURE_MESSAGES[result.reason]);
       return;

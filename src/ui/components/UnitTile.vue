@@ -39,6 +39,7 @@ function onPointerDown(event: PointerEvent) {
       <span v-if="favorite" class="star" aria-label="Favorite">★</span>
     </span>
     <span v-if="label" class="label">{{ label }}</span>
+    <slot />
   </button>
 </template>
 

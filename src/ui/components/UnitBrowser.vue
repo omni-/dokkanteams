@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { describeTeamBoosts } from '../../core/battlefield.ts';
 import { SORT_KEYS, emptyFilters, filterUnits, sortLabel, sortUnits } from '../../core/browse.ts';
+import { leaderBoost } from '../../core/leader.ts';
 import { RARITIES, UNIT_CLASSES, UNIT_TYPES } from '../../core/types.ts';
 import type { Obtain, Unit } from '../../core/types.ts';
 import { art } from '../art.ts';
 import type { DragOrigin } from '../drag.ts';
 import {
   FAILURE_MESSAGES,
+  activeBattlefieldLeaders,
   activeBattlefieldTeam,
   addToActiveBattlefieldTeam,
   addToTeam,
@@ -23,6 +26,7 @@ import {
   unitsById,
   usedInBattlefield,
 } from '../store.ts';
+import BoostBadges from './BoostBadges.vue';
 import CategoryPicker from './CategoryPicker.vue';
 import UnitTile from './UnitTile.vue';
 
@@ -43,6 +47,25 @@ const visible = computed(() => {
 
 const shownCount = ref(PAGE_SIZE);
 const shown = computed(() => visible.value.slice(0, shownCount.value));
+
+// Each page keeps its own Quick add setting. The Battlefield starts with it on.
+const quickAdd = computed({
+  get: () => (props.mode === 'battlefield' ? settings.battlefieldQuickAdd : settings.quickAdd),
+  set: value => {
+    if (props.mode === 'battlefield') settings.battlefieldQuickAdd = value;
+    else settings.quickAdd = value;
+  },
+});
+
+/** Whether the selected Battlefield team's leader and friend boost each shown unit. Null when not marking them. */
+const boosts = computed(() => {
+  const { leader, friend } = activeBattlefieldLeaders.value;
+  if (props.mode !== 'battlefield' || !settings.showBoosts || (!leader && !friend)) return null;
+  return new Map(shown.value.map(unit => [unit.id, {
+    leader: leader != null && leaderBoost(leader.leader, unit) > 0,
+    friend: friend != null && leaderBoost(friend.leader, unit) > 0,
+  }]));
+});
 const grid = ref<HTMLElement | null>(null);
 const sentinel = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
@@ -98,22 +121,27 @@ function setSort(key: typeof sort.key) {
 }
 
 function pick(unit: Unit) {
-  if (props.mode === 'battlefield') {
+  if (!quickAdd.value) {
+    selectUnit(unit);
+    emit('picked', unit);
+  } else if (props.mode === 'battlefield') {
     const result = addToActiveBattlefieldTeam(unit);
     if (!result.ok) showToast(FAILURE_MESSAGES[result.reason]);
-    return;
+  } else if (isInTeam(unit)) {
+    removeFromTeam(unit);
+  } else {
+    addToTeam(unit);
   }
-  if (settings.quickAdd) {
-    if (isInTeam(unit)) removeFromTeam(unit);
-    else addToTeam(unit);
-    return;
-  }
-  selectUnit(unit);
-  emit('picked', unit);
 }
 
 function tileLabel(unit: Unit) {
   return settings.showLabel ? sortLabel(unit, sort.key) : null;
+}
+
+function tileTooltip(unit: Unit) {
+  if (!boosts.value) return undefined;
+  const { leader, friend } = activeBattlefieldLeaders.value;
+  return describeTeamBoosts(unit, leader, friend);
 }
 </script>
 
@@ -197,9 +225,15 @@ function tileLabel(unit: Unit) {
         </span>
         <div class="row">
           <label class="toggle"><input v-model="settings.showLabel" type="checkbox" /> Values</label>
-          <label v-if="mode === 'team'" class="toggle" title="Tapping a unit adds it to the team instead of opening its details">
-            <input v-model="settings.quickAdd" type="checkbox" /> Quick add
-          </label>
+          <label
+            v-if="mode === 'battlefield'"
+            class="toggle"
+            title="Mark the units the selected team's leader (L) and friend (F) boost"
+          ><input v-model="settings.showBoosts" type="checkbox" /> Boosts</label>
+          <label
+            class="toggle"
+            :title="`Tapping a unit adds it to the ${mode === 'battlefield' ? 'selected ' : ''}team instead of opening its details`"
+          ><input v-model="quickAdd" type="checkbox" /> Quick add</label>
         </div>
       </div>
     </div>
@@ -210,12 +244,15 @@ function tileLabel(unit: Unit) {
         :key="unit.id"
         :unit="unit"
         :label="tileLabel(unit)"
+        :tooltip="tileTooltip(unit)"
         :favorite="favorites.has(unit.id)"
         :checked="mode === 'team' && isInTeam(unit)"
-        :selected="mode === 'team' && !settings.quickAdd && selectedId === unit.id"
+        :selected="!quickAdd && selectedId === unit.id"
         :origin="LIST_ORIGIN"
         @pick="pick"
-      />
+      >
+        <BoostBadges v-if="boosts" :leader="boosts.get(unit.id)?.leader ?? false" :friend="boosts.get(unit.id)?.friend ?? false" />
+      </UnitTile>
       <div v-if="shown.length < visible.length" ref="sentinel" class="sentinel" aria-hidden="true" />
     </div>
     <p v-if="!visible.length && unitsById.size" class="empty">No units match these filters.</p>
