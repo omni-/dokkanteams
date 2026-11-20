@@ -185,35 +185,64 @@ export function teamLinkCounts(team: readonly Unit[]): LinkCount[] {
 /** How many rotation pairs a team has. Everyone else floats. */
 export const ROTATION_COUNT = 2;
 
+/** The friend's id in the rotations, since the friend can be a copy of a team member. */
+export const FRIEND_ID = -1;
+
+/** A unit in the rotations: a team member under its unit id, or the friend under `FRIEND_ID`. */
+export interface RotationMember {
+  id: number;
+  unit: Unit;
+}
+
+/** The team plus the friend, who comes in as a seventh unit. */
+export function rotationMembers(team: readonly Unit[], friend: Unit | null): RotationMember[] {
+  const members = team.map(unit => ({ id: unit.id, unit }));
+  return friend ? [...members, { id: FRIEND_ID, unit: friend }] : members;
+}
+
+/**
+ * Links two rotation members share. The same-character rule doesn't cover the friend, so the friend links
+ * with anyone, even a copy of itself.
+ */
+export function memberLinks(a: RotationMember, b: RotationMember): string[] {
+  if (!canPair(a, b)) return [];
+  return a.unit.links.filter(link => b.unit.links.includes(link));
+}
+
+function canPair(a: RotationMember, b: RotationMember) {
+  return a.id === FRIEND_ID || b.id === FRIEND_ID || canShareTeam(a.unit, b.unit);
+}
+
 /** One rotation spot is null while it's empty. */
 export interface RotationPair {
-  units: [Unit | null, Unit | null];
+  units: [RotationMember | null, RotationMember | null];
   links: string[];
 }
 
 export interface RotationPlan {
   rotations: RotationPair[];
-  floaters: Unit[];
+  floaters: RotationMember[];
 }
 
-/** Rotations by unit id, with null for an empty spot. Always has `ROTATION_COUNT` pairs. */
+/** Rotations by member id, with null for an empty spot. Always has `ROTATION_COUNT` pairs. */
 export interface RotationLayout {
   rotations: Array<[number | null, number | null]>;
   floaters: number[];
 }
 
-/** Where a unit can be dropped in the rotations: onto a member, an empty spot, or the floaters. */
+/** Where a member can be dropped in the rotations: onto another member, an empty spot, or the floaters. */
 export type RotationSpot =
   | { kind: 'unit'; unitId: number }
   | { kind: 'slot'; rotation: number; position: number }
   | { kind: 'floaters' };
 
-/** Every pair in `team` that can be fielded together, most shared links first. */
-function rotationPairs(team: readonly Unit[]): Array<{ units: [Unit, Unit]; links: string[] }> {
-  const pairs: Array<{ units: [Unit, Unit]; links: string[] }> = [];
-  for (let i = 0; i < team.length; i++) {
-    for (let j = i + 1; j < team.length; j++) {
-      if (canShareTeam(team[i], team[j])) pairs.push({ units: [team[i], team[j]], links: sharedLinks(team[i], team[j]) });
+/** Every pair of members that can be fielded together, most shared links first. */
+function rotationPairs(members: readonly RotationMember[]): Array<{ ids: [number, number]; links: string[] }> {
+  const pairs: Array<{ ids: [number, number]; links: string[] }> = [];
+  for (let i = 0; i < members.length; i++) {
+    for (let j = i + 1; j < members.length; j++) {
+      const [a, b] = [members[i], members[j]];
+      if (canPair(a, b)) pairs.push({ ids: [a.id, b.id], links: memberLinks(a, b) });
     }
   }
   return pairs.sort((a, b) => b.links.length - a.links.length);
@@ -223,15 +252,15 @@ function rotationPairs(team: readonly Unit[]): Array<{ units: [Unit, Unit]; link
  * The two rotations (pairs that come in together every other turn) with the most shared links
  * between them, and everyone else as floaters. A team of two or three gets one rotation.
  */
-export function bestRotations(team: readonly Unit[]): RotationLayout {
-  const pairs = rotationPairs(team);
+export function bestRotations(members: readonly RotationMember[]): RotationLayout {
+  const pairs = rotationPairs(members);
   let rotations = pairs.slice(0, 1);
   let bestTotal = -1;
   let bestWeaker = -1;
   for (let i = 0; i < pairs.length; i++) {
     for (let j = i + 1; j < pairs.length; j++) {
       const [a, b] = [pairs[i], pairs[j]];
-      if (b.units.some(unit => a.units.includes(unit))) continue;
+      if (b.ids.some(id => a.ids.includes(id))) continue;
       const total = a.links.length + b.links.length;
       // On a tie, two decent rotations beat one great and one poor.
       const weaker = Math.min(a.links.length, b.links.length);
@@ -243,22 +272,22 @@ export function bestRotations(team: readonly Unit[]): RotationLayout {
     }
   }
 
-  const rotating = new Set(rotations.flatMap(pair => pair.units));
+  const rotating = new Set(rotations.flatMap(pair => pair.ids));
   return {
     rotations: Array.from({ length: ROTATION_COUNT }, (_, index): [number | null, number | null] => {
       const pair = rotations[index];
-      return pair ? [pair.units[0].id, pair.units[1].id] : [null, null];
+      return pair ? [...pair.ids] : [null, null];
     }),
-    floaters: team.filter(unit => !rotating.has(unit)).map(unit => unit.id),
+    floaters: members.filter(member => !rotating.has(member.id)).map(member => member.id),
   };
 }
 
 /**
- * `layout` brought in line with the team: members who left are taken out, leaving their spot empty, and
- * new members fill the first empty rotation spot, then the floaters. Nobody else moves.
+ * `layout` brought in line with the members: those who left are taken out, leaving their spot empty, and
+ * new ones fill the first empty rotation spot, then the floaters. Nobody else moves.
  */
-export function fitLayout(layout: RotationLayout | null, teamIds: readonly number[]): RotationLayout {
-  const members = new Set(teamIds);
+export function fitLayout(layout: RotationLayout | null, memberIds: readonly number[]): RotationLayout {
+  const members = new Set(memberIds);
   const placed = new Set<number>();
   const keep = (id: number | null | undefined) => {
     if (id == null || !members.has(id) || placed.has(id)) return null;
@@ -272,7 +301,7 @@ export function fitLayout(layout: RotationLayout | null, teamIds: readonly numbe
   });
   const floaters = (layout?.floaters ?? []).map(keep).filter(id => id != null);
 
-  for (const id of teamIds) {
+  for (const id of memberIds) {
     if (placed.has(id)) continue;
     placed.add(id);
     const pair = rotations.find(spots => spots.includes(null));
@@ -317,16 +346,16 @@ function takeOut(layout: RotationLayout, unitId: number): RotationLayout {
   };
 }
 
-/** The units and shared links `layout` describes. Ids that aren't in `team` show as empty spots. */
-export function rotationPlan(layout: RotationLayout, team: readonly Unit[]): RotationPlan {
-  const byId = new Map(team.map(unit => [unit.id, unit]));
-  const unit = (id: number | null) => (id == null ? null : byId.get(id) ?? null);
+/** The members and shared links `layout` describes. Ids that aren't in `members` show as empty spots. */
+export function rotationPlan(layout: RotationLayout, members: readonly RotationMember[]): RotationPlan {
+  const byId = new Map(members.map(member => [member.id, member]));
+  const member = (id: number | null) => (id == null ? null : byId.get(id) ?? null);
   return {
     rotations: layout.rotations.map(([first, second]) => {
-      const [a, b] = [unit(first), unit(second)];
-      return { units: [a, b], links: a && b ? sharedLinks(a, b) : [] };
+      const [a, b] = [member(first), member(second)];
+      return { units: [a, b], links: a && b ? memberLinks(a, b) : [] };
     }),
-    floaters: layout.floaters.map(unit).filter(member => member != null),
+    floaters: layout.floaters.map(member).filter(entry => entry != null),
   };
 }
 

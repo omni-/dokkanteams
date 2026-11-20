@@ -4,15 +4,20 @@ Team building tools for Dragon Ball Z Dokkan Battle, served at **builder.dokkand
 tools from dokkantools.com, which is no longer updated.
 
 - **Unit browser**: search, filter by category (any or all of several), rarity, class, type and F2P or premium,
-  and sort by leader boost, release date, cost, HP, ATK or DEF. As in the game, the release sort counts a card's
-  EZA and Super EZA dates, and transformed forms are listed right after their base card.
+  and sort by leader boost, compatibility, release date, cost, HP, ATK or DEF. As in the game, the release sort
+  counts a card's EZA and Super EZA dates, and transformed forms are listed right after their base card.
+  **Compatibility** adds up how much the team's leader and friend boost each unit (on the Battlefield, the selected
+  team's leader and friend).
 - **Unit details**: stats, base or EZA skills, transformations, linking partners, the units it boosts as
   leader, and every leader that boosts it, grouped by boost. Hover a link to see what it does at level 10. On wide
   screens the details open over the unit list.
 - **Team tools**: a shared-links graph with what each link does, rotation pairs with the stats their shared links
-  add up to, leaders that boost every member, and what each member would do as leader. New members take the first
-  open rotation spot and nobody moves unless you drag them; **Best rotations** pairs up the most shared links.
-  Drag units into the team, between members to reorder, or out to remove them.
+  add up to, leaders that boost every member, and what each member would do as leader. The first member is the
+  leader; click one of the **Possible teams** to make its leader yours. The friend is a copy of the leader unless
+  **Enable asymmetric lead** is on, which adds a friend slot: drag a unit onto it, or click it and then tap a unit.
+  The friend joins the rotations as a seventh unit and, as in the game, can be a copy of any member. New members
+  take the first open rotation spot and nobody moves unless you drag them; **Best rotations** pairs up the most
+  shared links. Drag units into the team, between members to reorder, or out to remove them.
 - **Battlefield**: plan 16 Ultimate Clash teams where each card is used once, with leader and friend boosts marked
   on every card. **Boosts** marks them on the unit list too, for the selected team. As in Ultimate Clash, a team can
   hold several cards of the same character. Tapping a unit adds it to the selected team; turn off **Quick add** to
@@ -20,7 +25,8 @@ tools from dokkantools.com, which is no longer updated.
   to remove them.
 
 Cards use the game's own frames, type and rarity icons and LR lightning, taken from DokkanDaily. Passives use the
-game's icons for effects that activate once or last for the rest of battle, taken from DokkanStats.
+game's icons for effects that activate once or last for the rest of battle, taken from DokkanStats. The LEADER
+and FRIEND stickers are the game's, taken from Dokkan Info.
 
 Everything runs in the browser. There is no backend; favorites, the team and the Battlefield plan are kept in
 `localStorage`.

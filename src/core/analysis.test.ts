@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FRIEND_ID,
   bestLeadersFor,
   bestRotations,
   commonLeaders,
@@ -9,6 +10,7 @@ import {
   moveInLayout,
   possibleTeams,
   restoreRotationLayout,
+  rotationMembers,
   rotationPlan,
   sharedLinks,
   teamLinkCounts,
@@ -142,12 +144,12 @@ describe('bestRotations', () => {
     const c = makeUnit({ links: ['a', '2', '3', '4', 'c'] });
     const d = makeUnit({ links: ['b1', 'b2', 'b3', 'b4', 'c'] });
     const floater = makeUnit({ links: [] });
-    const team = [a, b, c, d, floater];
+    const members = rotationMembers([a, b, c, d, floater], null);
 
-    const layout = bestRotations(team);
+    const layout = bestRotations(members);
 
     expect(layout).toEqual({ rotations: [[a.id, c.id], [b.id, d.id]], floaters: [floater.id] });
-    expect(rotationPlan(layout, team).rotations.map(pair => pair.links.length)).toEqual([4, 4]);
+    expect(rotationPlan(layout, members).rotations.map(pair => pair.links.length)).toEqual([4, 4]);
   });
 
   it('never pairs two cards of the same character', () => {
@@ -155,9 +157,32 @@ describe('bestRotations', () => {
     const otherGoku = makeUnit({ name: 'Goku', links: ['A', 'B', 'C'] });
     const vegeta = makeUnit({ name: 'Vegeta', links: ['A'] });
 
-    const layout = bestRotations([goku, otherGoku, vegeta]);
+    const layout = bestRotations(rotationMembers([goku, otherGoku, vegeta], null));
 
     expect(layout).toEqual({ rotations: [[goku.id, vegeta.id], [null, null]], floaters: [otherGoku.id] });
+  });
+
+  it('pairs the friend with a copy of itself, which shares every link', () => {
+    const leader = makeUnit({ name: 'Goku', links: ['A', 'B', 'C', 'D'] });
+    const b = makeUnit({ links: ['A', 'B'] });
+    const c = makeUnit({ links: ['A', 'B'] });
+    const members = rotationMembers([leader, b, c], leader);
+
+    const layout = bestRotations(members);
+
+    expect(layout).toEqual({ rotations: [[leader.id, FRIEND_ID], [b.id, c.id]], floaters: [] });
+    expect(rotationPlan(layout, members).rotations[0].links).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('lets the friend link with a member of the same character', () => {
+    const goku = makeUnit({ name: 'Goku', links: ['A', 'B'] });
+    const friendGoku = makeUnit({ name: 'Goku', links: ['A', 'B', 'C'] });
+    const layout: RotationLayout = { rotations: [[goku.id, FRIEND_ID], [null, null]], floaters: [] };
+
+    const plan = rotationPlan(layout, rotationMembers([goku], friendGoku));
+
+    expect(plan.rotations[0].links).toEqual(['A', 'B']);
+    expect(plan.rotations[0].units.map(member => member?.unit.id)).toEqual([goku.id, friendGoku.id]);
   });
 });
 
@@ -186,9 +211,10 @@ describe('arranging rotations', () => {
 
     const moved = moveInLayout(layout, b.id, { kind: 'unit', unitId: floater.id });
 
-    const plan = rotationPlan(moved, [a, b, floater]);
-    expect(plan.rotations[0]).toEqual({ units: [a, floater], links: ['A'] });
-    expect(plan.floaters).toEqual([b]);
+    const plan = rotationPlan(moved, rotationMembers([a, b, floater], null));
+    expect(plan.rotations[0].units.map(member => member?.unit)).toEqual([a, floater]);
+    expect(plan.rotations[0].links).toEqual(['A']);
+    expect(plan.floaters.map(member => member.unit)).toEqual([b]);
   });
 
   it('moves a unit into an open spot or the floaters and leaves its old spot open', () => {

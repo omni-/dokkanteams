@@ -49,6 +49,43 @@ describe('sortUnits by leader', () => {
   });
 });
 
+describe('sortUnits by compatibility', () => {
+  const leader = makeUnit({ leaderSkill: '"Pure Saiyans" Category Ki +3 and HP, ATK & DEF +200%' });
+  const friend = makeUnit({ leaderSkill: 'All Types Ki +3 and HP, ATK & DEF +100%' });
+  const saiyan = makeUnit({ categories: ['Pure Saiyans'] });
+  const human = makeUnit({ categories: ['Earthlings'] });
+
+  it('puts the units the leader and friend boost most first, and anyone neither boosts last', () => {
+    const outsider = makeUnit({ categories: ['Earthlings'] });
+    const lead = { leader, friend: leader };
+
+    const sorted = sortUnits([outsider, saiyan], 'compatibility', 'desc', lead);
+    const ascending = sortUnits([outsider, saiyan], 'compatibility', 'asc', lead);
+
+    expect(sorted.map(unit => unit.id)).toEqual([saiyan.id, outsider.id]);
+    expect(ascending.map(unit => unit.id)).toEqual([saiyan.id, outsider.id]);
+    expect(sortLabel(outsider, 'compatibility', lead)).toBe('—');
+  });
+
+  it('adds up an asymmetric lead and labels both boosts', () => {
+    const lead = { leader, friend };
+
+    const sorted = sortUnits([human, saiyan], 'compatibility', 'desc', lead);
+
+    expect(sorted.map(unit => unit.id)).toEqual([saiyan.id, human.id]);
+    expect(sortLabel(saiyan, 'compatibility', lead)).toBe('200+100%');
+    expect(sortLabel(human, 'compatibility', lead)).toBe('0+100%');
+  });
+
+  it('labels a symmetric lead or a lone leader with one boost', () => {
+    const symmetric = sortLabel(saiyan, 'compatibility', { leader, friend: leader });
+    const friendOnly = sortLabel(saiyan, 'compatibility', { leader: null, friend });
+
+    expect(symmetric).toBe('200%');
+    expect(friendOnly).toBe('100%');
+  });
+});
+
 describe('titledName', () => {
   it('puts the bracketed title before the name', () => {
     const unit = makeUnit({ name: 'Third Eye Gomah', title: 'Threat of the Third Eye' });

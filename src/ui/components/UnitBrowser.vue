@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { describeTeamBoosts } from '../../core/battlefield.ts';
-import { SORT_KEYS, emptyFilters, filterUnits, sortLabel, sortUnits } from '../../core/browse.ts';
+import { SORT_KEYS, emptyFilters, filterUnits, sortLabel, sortUnits, titledName } from '../../core/browse.ts';
+import type { Lead } from '../../core/browse.ts';
 import { leaderBoost } from '../../core/leader.ts';
 import { RARITIES, UNIT_CLASSES, UNIT_TYPES } from '../../core/types.ts';
 import type { Obtain, Unit } from '../../core/types.ts';
@@ -16,9 +17,12 @@ import {
   favorites,
   filters,
   isInTeam,
+  lead,
+  pickingFriend,
   removeFromTeam,
   selectUnit,
   selectedId,
+  setFriend,
   settings,
   showToast,
   sort,
@@ -39,10 +43,15 @@ const LIST_ORIGIN: DragOrigin = { kind: 'list' };
 const PAGE_SIZE = 120;
 const showFilters = ref(false);
 
+/** Whose leader skills the Compatibility sort adds up: the team's, or the selected Battlefield team's. */
+const sortLead = computed<Lead>(() => (props.mode === 'battlefield' ? activeBattlefieldLeaders.value : lead.value));
+const noLead = computed(() => sort.key === 'compatibility' && !sortLead.value.leader && !sortLead.value.friend);
+const picking = computed(() => props.mode === 'team' && pickingFriend.value);
+
 const visible = computed(() => {
   const hidden = props.mode === 'battlefield' ? usedInBattlefield.value : undefined;
   const activeFilters = props.mode === 'battlefield' ? { ...filters, showForms: false } : filters;
-  return sortUnits(filterUnits(units.value, activeFilters, favorites.value, hidden), sort.key, sort.direction);
+  return sortUnits(filterUnits(units.value, activeFilters, favorites.value, hidden), sort.key, sort.direction, sortLead.value);
 });
 
 const shownCount = ref(PAGE_SIZE);
@@ -121,7 +130,10 @@ function setSort(key: typeof sort.key) {
 }
 
 function pick(unit: Unit) {
-  if (!quickAdd.value) {
+  if (picking.value) {
+    setFriend(unit);
+    if (unit.formOf == null) showToast(`${titledName(unit)} is now the friend.`);
+  } else if (!quickAdd.value) {
     selectUnit(unit);
     emit('picked', unit);
   } else if (props.mode === 'battlefield') {
@@ -135,12 +147,12 @@ function pick(unit: Unit) {
 }
 
 function tileLabel(unit: Unit) {
-  return settings.showLabel ? sortLabel(unit, sort.key) : null;
+  return settings.showLabel ? sortLabel(unit, sort.key, sortLead.value) : null;
 }
 
 function tileTooltip(unit: Unit) {
-  if (!boosts.value) return undefined;
-  const { leader, friend } = activeBattlefieldLeaders.value;
+  if (!boosts.value && (sort.key !== 'compatibility' || noLead.value)) return undefined;
+  const { leader, friend } = sortLead.value;
   return describeTeamBoosts(unit, leader, friend);
 }
 </script>
@@ -212,7 +224,7 @@ function tileTooltip(unit: Unit) {
           type="button"
           class="sort"
           :class="{ active: sort.key === option.key }"
-          :title="sort.key === option.key ? 'Click again to flip the order' : `Sort by ${option.label}`"
+          :title="sort.key === option.key ? 'Click again to flip the order' : option.hint ?? `Sort by ${option.label}`"
           @click="setSort(option.key)"
         >
           {{ option.label }}<span v-if="sort.key === option.key" aria-hidden="true">{{ sort.direction === 'desc' ? ' ↓' : ' ↑' }}</span>
@@ -222,6 +234,7 @@ function tileTooltip(unit: Unit) {
       <div class="row spread small">
         <span class="muted">
           {{ visible.length }} units<template v-if="mode === 'battlefield'"> · adding to Team {{ activeBattlefieldTeam + 1 }}</template>
+          <template v-if="noLead"> · {{ mode === 'battlefield' ? 'this team has no leader' : 'add a leader' }} to sort by Compatibility</template>
         </span>
         <div class="row">
           <label class="toggle"><input v-model="settings.showLabel" type="checkbox" /> Values</label>
@@ -236,6 +249,11 @@ function tileTooltip(unit: Unit) {
           ><input v-model="quickAdd" type="checkbox" /> Quick add</label>
         </div>
       </div>
+
+      <div v-if="picking" class="row spread picking" role="status">
+        <span>Tap a unit to make it the friend.</span>
+        <button type="button" class="link small" @click="pickingFriend = false">Cancel</button>
+      </div>
     </div>
 
     <div v-show="visible.length" ref="grid" class="tile-grid grid" data-drag-scroll>
@@ -247,7 +265,7 @@ function tileTooltip(unit: Unit) {
         :tooltip="tileTooltip(unit)"
         :favorite="favorites.has(unit.id)"
         :checked="mode === 'team' && isInTeam(unit)"
-        :selected="!quickAdd && selectedId === unit.id"
+        :selected="!quickAdd && !picking && selectedId === unit.id"
         :origin="LIST_ORIGIN"
         @pick="pick"
       >
@@ -285,6 +303,13 @@ function tileTooltip(unit: Unit) {
 .sort-row { gap: 4px; }
 .sort { padding: 3px 8px; }
 .toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.picking {
+  padding: 6px 10px;
+  border: 1px solid var(--good);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--good) 14%, transparent);
+  font-weight: 600;
+}
 .sentinel { grid-column: 1 / -1; height: 1px; }
 .grid {
   --tile: 68px;

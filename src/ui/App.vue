@@ -8,7 +8,7 @@ import TeamPanel from './components/TeamPanel.vue';
 import UnitBrowser from './components/UnitBrowser.vue';
 import UnitDetail from './components/UnitDetail.vue';
 import { drag } from './drag.ts';
-import { closeDetail, dataset, detailOpen, loadData, loadError, page, team, toast, usedInBattlefield } from './store.ts';
+import { closeDetail, dataset, detailOpen, loadData, loadError, page, pickingFriend, team, toast, usedInBattlefield } from './store.ts';
 
 type MobilePanel = 'browse' | 'detail' | 'team';
 
@@ -17,6 +17,13 @@ const about = ref<InstanceType<typeof AboutDialog> | null>(null);
 const mobilePanel = ref<MobilePanel>('browse');
 
 watch(page, () => {
+  mobilePanel.value = 'browse';
+  closeDetail();
+});
+
+// Choosing the friend happens in the unit list, which phones show in its own panel.
+watch(pickingFriend, picking => {
+  if (!picking) return;
   mobilePanel.value = 'browse';
   closeDetail();
 });

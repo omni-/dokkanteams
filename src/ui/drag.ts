@@ -6,7 +6,9 @@ import type { Unit } from '../core/types.ts';
 export type DragOrigin =
   | { kind: 'list' }
   | { kind: 'team' }
-  | { kind: 'rotation' }
+  | { kind: 'friend' }
+  /** `member` is the unit's id in the rotations, which for the friend is FRIEND_ID. */
+  | { kind: 'rotation'; member: number }
   | { kind: 'battlefield'; team: number; slot: number };
 
 /**
@@ -15,6 +17,7 @@ export type DragOrigin =
  */
 export type DropTarget =
   | { kind: 'team'; beforeId: number | null }
+  | { kind: 'friend' }
   | { kind: 'rotation'; spot: RotationSpot | null }
   | { kind: 'battlefield'; team: number; slot: number | null };
 
@@ -160,6 +163,8 @@ function findTarget(x: number, y: number): DropTarget | null {
     const next = member.dataset.next ? Number(member.dataset.next) : null;
     return { kind: 'team', beforeId: after ? next : Number(member.dataset.member) };
   }
+
+  if (zone.dataset.drop === 'friend') return { kind: 'friend' };
 
   if (zone.dataset.drop === 'rotation') {
     const spot = element.closest<HTMLElement>('[data-rotation-unit], [data-rotation-slot], [data-rotation-floaters]');

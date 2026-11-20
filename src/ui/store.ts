@@ -1,5 +1,5 @@
 import { computed, reactive, ref, shallowRef, watch } from 'vue';
-import { bestRotations, fitLayout, moveInLayout, restoreRotationLayout, rotationPlan } from '../core/analysis.ts';
+import { FRIEND_ID, bestRotations, fitLayout, moveInLayout, restoreRotationLayout, rotationMembers, rotationPlan } from '../core/analysis.ts';
 import type { RotationLayout, RotationPlan, RotationSpot } from '../core/analysis.ts';
 import {
   addToBattlefield,
@@ -13,7 +13,7 @@ import {
 } from '../core/battlefield.ts';
 import type { AddResult, Battlefield } from '../core/battlefield.ts';
 import { emptyFilters } from '../core/browse.ts';
-import type { BrowseFilters, SortDirection, SortKey } from '../core/browse.ts';
+import type { BrowseFilters, Lead, SortDirection, SortKey } from '../core/browse.ts';
 import { placeInTeam } from '../core/team.ts';
 import type { Dataset, Unit } from '../core/types.ts';
 import { onDrop } from './drag.ts';
@@ -56,6 +56,7 @@ export const settings = reactive({
   showBoosts: true,
   maxBoostOnly: false,
   useEza: true,
+  asymmetricLead: false,
   ...loadSaved<Record<string, unknown>>('settings'),
 });
 
@@ -71,12 +72,25 @@ export const teamIds = ref<number[]>([]);
 export const team = computed(() =>
   teamIds.value.map(id => unitsById.value.get(id)).filter((unit): unit is Unit => unit != null),
 );
+/** The first member leads the team. */
+export const leader = computed(() => team.value[0] ?? null);
+/** Kept while asymmetric lead is off, so turning it back on brings the same friend back. */
+export const friendId = ref<number | null>(null);
+/** The viewer clicked the friend slot, so the next unit they tap in the list becomes the friend. */
+export const pickingFriend = ref(false);
+/** The team's two leader skills. Without asymmetric lead the friend is a copy of the leader. */
+export const lead = computed<Lead>(() => ({
+  leader: leader.value,
+  friend: settings.asymmetricLead ? (friendId.value == null ? null : unitsById.value.get(friendId.value) ?? null) : leader.value,
+}));
+const members = computed(() => rotationMembers(team.value, lead.value.friend));
+const memberIds = computed(() => members.value.map(member => member.id));
 // Kept in line with the team as members come and go (see fitLayout), so nobody moves unless the viewer moves them.
 const rotationLayout = ref<RotationLayout>(fitLayout(null, []));
-const fittedLayout = computed(() => fitLayout(rotationLayout.value, teamIds.value));
-/** The team's rotations as the viewer arranged them. Null while the team is empty. */
+const fittedLayout = computed(() => fitLayout(rotationLayout.value, memberIds.value));
+/** The team's rotations, friend included, as the viewer arranged them. Null while there's nobody to place. */
 export const rotations = computed<RotationPlan | null>(() =>
-  team.value.length ? rotationPlan(fittedLayout.value, team.value) : null,
+  members.value.length ? rotationPlan(fittedLayout.value, members.value) : null,
 );
 export const battlefield = ref<Battlefield>(emptyBattlefield());
 export const activeBattlefieldTeam = ref(0);
@@ -109,12 +123,15 @@ function restoreSavedLists() {
 
   favorites.value = new Set(keepKnown(loadSaved('favorites')));
   teamIds.value = [...new Set(keepKnown(loadSaved('team')))];
+  const savedFriend = keepKnown([loadSaved('friend')])[0];
+  friendId.value = savedFriend != null && unitsById.value.get(savedFriend)?.formOf == null ? savedFriend : null;
   battlefield.value = restoreBattlefield(loadSaved('battlefield'), known);
-  rotationLayout.value = fitLayout(restoreRotationLayout(loadSaved('rotations')), teamIds.value);
+  rotationLayout.value = fitLayout(restoreRotationLayout(loadSaved('rotations')), memberIds.value);
 
   watch(favorites, value => save('favorites', [...value]), { deep: true });
   watch(teamIds, value => save('team', value), { deep: true });
-  watch(teamIds, value => (rotationLayout.value = fitLayout(rotationLayout.value, value)));
+  watch(friendId, value => save('friend', value));
+  watch(memberIds, value => (rotationLayout.value = fitLayout(rotationLayout.value, value)));
   watch(rotationLayout, value => save('rotations', value));
   watch(battlefield, value => save('battlefield', value), { deep: true });
 }
@@ -122,6 +139,7 @@ function restoreSavedLists() {
 watch(page, value => save('page', value));
 watch(settings, value => save('settings', value), { deep: true });
 watch(sort, value => save('sort', value), { deep: true });
+watch([page, () => settings.asymmetricLead], () => (pickingFriend.value = false));
 
 export function selectUnit(unit: Unit): void {
   selectedId.value = unit.id;
@@ -155,18 +173,38 @@ export function removeFromTeam(unit: Unit): void {
   teamIds.value = teamIds.value.filter(id => id !== unit.id);
 }
 
-export function clearTeam(): void {
-  teamIds.value = [];
+/** Moves a member, or a unit from outside the team, into the first slot. */
+export function makeLeader(unit: Unit): void {
+  if (teamIds.value[0] !== unit.id) addToTeam(unit, teamIds.value[0] ?? null);
 }
 
-/** Moves a team member to a spot in the rotations, swapping with whoever is there. */
-export function moveInRotations(unit: Unit, spot: RotationSpot): void {
-  rotationLayout.value = moveInLayout(fittedLayout.value, unit.id, spot);
+/** Makes `unit` the asymmetric lead's friend. It can be a copy of anyone in the team. */
+export function setFriend(unit: Unit): void {
+  pickingFriend.value = false;
+  if (unit.formOf != null) {
+    showToast(FAILURE_MESSAGES.form);
+    return;
+  }
+  friendId.value = unit.id;
+}
+
+export function clearFriend(): void {
+  friendId.value = null;
+}
+
+export function clearTeam(): void {
+  teamIds.value = [];
+  friendId.value = null;
+}
+
+/** Moves a member to a spot in the rotations, swapping with whoever is there. The friend goes by FRIEND_ID. */
+export function moveInRotations(memberId: number, spot: RotationSpot): void {
+  rotationLayout.value = moveInLayout(fittedLayout.value, memberId, spot);
 }
 
 /** Rearranges the rotations so the pairs share as many links as possible. */
 export function arrangeBestRotations(): void {
-  rotationLayout.value = fitLayout(bestRotations(team.value), teamIds.value);
+  rotationLayout.value = fitLayout(bestRotations(members.value), memberIds.value);
 }
 
 export function addToActiveBattlefieldTeam(unit: Unit): AddResult {
@@ -194,22 +232,34 @@ export function clearWholeBattlefield(): void {
 
 export type DropPreview = 'add' | 'move' | 'remove' | 'none';
 
+// The dragged tile's id in the rotations, or null for a unit that isn't in them yet.
+function rotationIdOf(unit: Unit, origin: DragOrigin): number | null {
+  if (origin.kind === 'rotation') return origin.member;
+  if (origin.kind === 'friend') return FRIEND_ID;
+  return isInTeam(unit) ? unit.id : null;
+}
+
 /** What letting go would do, shown on the dragged card. Mirrors dropUnit. */
 export function dropPreview(unit: Unit, origin: DragOrigin, target: DropTarget | null): DropPreview {
   if (target?.kind === 'team') {
     if (unit.formOf != null) return 'none';
     return origin.kind === 'team' || isInTeam(unit) ? 'move' : 'add';
   }
+  if (target?.kind === 'friend') {
+    // Team members stay where they are: the friend can be a copy of any of them.
+    return unit.formOf != null || friendId.value === unit.id ? 'none' : 'add';
+  }
   if (target?.kind === 'rotation') {
     if (unit.formOf != null) return 'none';
-    if (!isInTeam(unit)) return 'add';
-    return target.spot && moveInLayout(fittedLayout.value, unit.id, target.spot) !== fittedLayout.value ? 'move' : 'none';
+    const id = rotationIdOf(unit, origin);
+    if (id == null) return 'add';
+    return target.spot && moveInLayout(fittedLayout.value, id, target.spot) !== fittedLayout.value ? 'move' : 'none';
   }
   if (target?.kind === 'battlefield') {
     if (unit.formOf != null) return 'none';
     return origin.kind === 'battlefield' ? 'move' : 'add';
   }
-  return origin.kind === 'team' || origin.kind === 'battlefield' ? 'remove' : 'none';
+  return origin.kind === 'team' || origin.kind === 'friend' || origin.kind === 'battlefield' ? 'remove' : 'none';
 }
 
 export function dropUnit(unit: Unit, origin: DragOrigin, target: DropTarget | null): void {
@@ -218,10 +268,19 @@ export function dropUnit(unit: Unit, origin: DragOrigin, target: DropTarget | nu
     return;
   }
 
+  if (target?.kind === 'friend') {
+    setFriend(unit);
+    return;
+  }
+
   if (target?.kind === 'rotation') {
     // A unit from outside joins the team first, then takes the spot it was dropped on like a member would.
-    if (!isInTeam(unit)) addToTeam(unit);
-    if (isInTeam(unit) && target.spot) moveInRotations(unit, target.spot);
+    let id = rotationIdOf(unit, origin);
+    if (id == null) {
+      addToTeam(unit);
+      id = isInTeam(unit) ? unit.id : null;
+    }
+    if (id != null && target.spot) moveInRotations(id, target.spot);
     return;
   }
 
@@ -238,6 +297,7 @@ export function dropUnit(unit: Unit, origin: DragOrigin, target: DropTarget | nu
 
   // Dropped outside every team: dragging a unit out of one takes it off.
   if (origin.kind === 'team') removeFromTeam(unit);
+  else if (origin.kind === 'friend') clearFriend();
   else if (origin.kind === 'battlefield') removeBattlefieldUnit(unit.id);
 }
 

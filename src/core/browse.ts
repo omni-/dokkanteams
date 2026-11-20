@@ -1,16 +1,26 @@
+import { leaderBoost } from './leader.ts';
 import type { Obtain, Rarity, Unit, UnitClass, UnitType } from './types.ts';
 
-export type SortKey = 'leader' | 'release' | 'cost' | 'hp' | 'atk' | 'def';
+export type SortKey = 'leader' | 'compatibility' | 'release' | 'cost' | 'hp' | 'atk' | 'def';
 export type SortDirection = 'desc' | 'asc';
 
-export const SORT_KEYS: ReadonlyArray<{ key: SortKey; label: string }> = [
+export const SORT_KEYS: ReadonlyArray<{ key: SortKey; label: string; hint?: string }> = [
   { key: 'leader', label: 'Leader' },
+  { key: 'compatibility', label: 'Compatibility', hint: 'How much the leader and friend boost each unit' },
   { key: 'release', label: 'Release' },
   { key: 'cost', label: 'Cost' },
   { key: 'hp', label: 'HP' },
   { key: 'atk', label: 'ATK' },
   { key: 'def', label: 'DEF' },
 ];
+
+/** The two leader skills a team gets. In a symmetric lead the friend is the leader's own card. */
+export interface Lead {
+  leader: Unit | null;
+  friend: Unit | null;
+}
+
+const NO_LEAD: Lead = { leader: null, friend: null };
 
 export interface BrowseFilters {
   name: string;
@@ -69,15 +79,16 @@ export function filterUnits(
 }
 
 /**
- * Sorts a copy. Units with no value for the key (no release date, no cost) always go last, and
- * transformed forms follow their base card when it's in the list.
+ * Sorts a copy. Units with no value for the key (no release date, no cost, no boost from `lead`) always go
+ * last, and transformed forms follow their base card when it's in the list.
  */
-export function sortUnits(units: readonly Unit[], key: SortKey, direction: SortDirection): Unit[] {
+export function sortUnits(units: readonly Unit[], key: SortKey, direction: SortDirection, lead: Lead = NO_LEAD): Unit[] {
   const sign = direction === 'desc' ? -1 : 1;
+  const values = new Map(units.map(unit => [unit, sortValue(unit, key, lead)]));
 
   const sorted = [...units].sort((a, b) => {
-    const left = sortValue(a, key);
-    const right = sortValue(b, key);
+    const left = values.get(a);
+    const right = values.get(b);
     if (left == null || right == null) {
       if (left != null) return -1;
       if (right != null) return 1;
@@ -115,10 +126,14 @@ export function latestRelease(unit: Pick<Unit, 'releaseDate' | 'ezaReleaseDate' 
   return dates.length === 0 ? null : dates.reduce((newest, date) => (date > newest ? date : newest));
 }
 
-export function sortValue(unit: Unit, key: SortKey): number | string | null {
+export function sortValue(unit: Unit, key: SortKey, lead: Lead = NO_LEAD): number | string | null {
   switch (key) {
     case 'leader':
       return unit.maxBoost;
+    case 'compatibility': {
+      const { fromLeader, fromFriend } = leadBoosts(unit, lead);
+      return fromLeader + fromFriend || null;
+    }
     case 'release':
       return latestRelease(unit);
     case 'cost':
@@ -139,10 +154,25 @@ export function titledName(unit: Pick<Unit, 'name' | 'title'>): string {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** The short value shown under a unit's portrait for the current sort. */
-export function sortLabel(unit: Unit, key: SortKey): string {
-  const value = sortValue(unit, key);
+function leadBoosts(unit: Unit, { leader, friend }: Lead) {
+  return {
+    fromLeader: leader ? leaderBoost(leader.leader, unit) : 0,
+    fromFriend: friend ? leaderBoost(friend.leader, unit) : 0,
+  };
+}
+
+/**
+ * The short value shown under a unit's portrait for the current sort. Compatibility shows one boost when a
+ * single card leads or both are the same card, else the leader's and the friend's, as in "200+170%".
+ */
+export function sortLabel(unit: Unit, key: SortKey, lead: Lead = NO_LEAD): string {
+  const value = sortValue(unit, key, lead);
   if (value == null) return '—';
+  if (key === 'compatibility') {
+    const { fromLeader, fromFriend } = leadBoosts(unit, lead);
+    const single = !lead.leader || !lead.friend || lead.leader.id === lead.friend.id;
+    return single ? `${Math.max(fromLeader, fromFriend)}%` : `${fromLeader}+${fromFriend}%`;
+  }
   if (key === 'leader') return `${value}%`;
   if (key === 'release') return formatMonth(String(value));
   return Number(value).toLocaleString('en-US');
